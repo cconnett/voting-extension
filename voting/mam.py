@@ -12,7 +12,7 @@ class Tiebreaker(enum.Enum):
     LINEAR = 2
 
 
-def MaximizeAffirmedMajorities(ballots, tiebreaker=Tiebreaker.LINEAR):
+def MaximizeAffirmedMajorities(ballots):
     # Normalize ballots by wrapping naked entries in a singleton tuple.
     ballots = [
         [(rank,) if not isinstance(rank, tuple) else rank for rank in ballot]
@@ -74,8 +74,8 @@ def MaximizeAffirmedMajorities(ballots, tiebreaker=Tiebreaker.LINEAR):
             )
     # Sort the pairwise defeats first by majority minus minority, then majority.
     pairwise_defeats.sort(key=lambda e: e[1], reverse=True)
-    # Apply each pairwise defeat to the final order. Groups of pairwise defeats tie may
-    # tie, so group by the metric value.
+    # Apply each pairwise defeat to the final order. Group by the metric value
+    # so tied groups are processed together.
     for _, group in itertools.groupby(pairwise_defeats, key=lambda e: e[1]):
         group = list(group)
         # The group tie is broken by (1) which pair's defeated candidate is the lowest
@@ -90,10 +90,10 @@ def MaximizeAffirmedMajorities(ballots, tiebreaker=Tiebreaker.LINEAR):
         # Apply the pairwise defeat.
         for (a, b), metric in group:
             if not networkx.has_path(final_order, b, a):
-                logging.debug(f'Applying {a} > {b} : {metric}')
+                logging.debug(f"Applying {a} > {b} : {metric}")
                 final_order.add_edge(a, b)
             else:
-                logging.debug(f'Cannot apply {a} > {b} : {metric}')
+                logging.debug(f"Cannot apply {a} > {b} : {metric}")
 
     # Finally, apply the tiebreak ordering to resolve any other unresolved loops.
     for a, b in zip(tiebreak_ordering, tiebreak_ordering[1:]):
