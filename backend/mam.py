@@ -8,19 +8,20 @@ import networkx
 
 
 class Tiebreaker(enum.Enum):
-    # Return ties as sets.
+    # Return ties as sets within the ordering.
     NONE = 0
-    # Random Voter Hierarchy: Break ties with the preference of a random
-    # ballot, cascading to additional ballots when the tie remains
-    # unresolved. Ties are still possible if no voter expresses any preference
-    # between two candidates; ties are returned as sets.
+    # Random Voter Hierarchy: Break ties with the preferences of a random ballot,
+    # cascading to additional ballots when the tie remains unresolved. Ties are still
+    # possible if no voter expresses any preference between two candidates; ties are
+    # returned as sets.
     RVH = 1
-    # As RVH, but break any remaining ties with a random total ordering;
-    # returns a total ordering of candidates.
+    # As RVH, but break any remaining ties with a random total ordering; returns a total
+    # ordering of the candidates.
     LINEAR = 2
 
 
-def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.RVH, seed=None):
+def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.NONE, seed=None):
+    """Return the social choice ordering and the matrix of pairwise defeats."""
     # Normalize ballots by wrapping naked entries in a singleton tuple.
     ballots = [
         [(rank,) if not isinstance(rank, tuple) else rank for rank in ballot]
@@ -136,7 +137,10 @@ def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.RVH, seed=None)
             ):
                 final_order.add_edge(a, b)
     generations = list(networkx.topological_generations(final_order))
-    return [
-        generation[0] if len(generation) == 1 else set(generation)
-        for generation in generations
-    ]
+    return (
+        [
+            generation[0] if len(generation) == 1 else set(generation)
+            for generation in generations
+        ],
+        pairwise_defeats,
+    )
