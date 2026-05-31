@@ -4,149 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranked Choice Voting</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: system-ui, sans-serif;
-      background: #1a1a2e;
-      color: #e0e0e0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 32px;
-      font-size: 1.6rem;
-      color: #a78bfa;
-      letter-spacing: 0.05em;
-    }
-
-    .app {
-      width: 640px;
-    }
-
-    .columns {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    .panel {
-      background: #16213e;
-      border-radius: 12px;
-      padding: 20px;
-      min-height: 360px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .panel-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #7c7c9b;
-      margin-bottom: 16px;
-    }
-
-    .list {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .candidate {
-      background: #0f3460;
-      border: 1px solid #1a4a80;
-      border-radius: 8px;
-      padding: 14px 18px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, transform 0.1s;
-      user-select: none;
-    }
-
-    .candidate:hover {
-      background: #1a5a9a;
-      border-color: #a78bfa;
-      transform: translateX(3px);
-    }
-
-    .ballot-item {
-      background: #2d1b69;
-      border: 1px solid #4c2da0;
-      border-radius: 8px;
-      padding: 14px 18px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: grab;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: background 0.15s, border-color 0.15s;
-      user-select: none;
-    }
-
-    .ballot-item:active { cursor: grabbing; }
-
-    .ballot-item.dragging {
-      opacity: 0.4;
-    }
-
-    .ballot-item.drag-over {
-      border-color: #a78bfa;
-      background: #3d2580;
-    }
-
-    .rank-num {
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #a78bfa;
-      min-width: 18px;
-      text-align: right;
-    }
-
-    .ballot-item .remove-btn {
-      margin-left: auto;
-      background: none;
-      border: none;
-      color: #555;
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-      padding: 0 2px;
-      transition: color 0.15s;
-    }
-
-    .ballot-item .remove-btn:hover { color: #f87171; }
-
-    .empty-hint {
-      color: #3a3a5c;
-      font-size: 0.85rem;
-      text-align: center;
-      margin: auto;
-      padding: 24px 0;
-    }
-
-    .drop-zone {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .drop-zone.active-drop {
-      outline: 2px dashed #4c2da0;
-      outline-offset: 4px;
-      border-radius: 6px;
-    }
-  </style>
+  <link rel="stylesheet" href="/polls/style.css">
 </head>
 <body>
   <div class="app">
@@ -155,11 +13,9 @@
       <div class="panel">
         <div class="panel-title">Candidates</div>
         <div class="list" id="candidates">
-          <div class="candidate" data-id="A">Candidate A</div>
-          <div class="candidate" data-id="B">Candidate B</div>
-          <div class="candidate" data-id="C">Candidate C</div>
-          <div class="candidate" data-id="D">Candidate D</div>
-          <div class="candidate" data-id="E">Candidate E</div>
+            {% for candidate in candidates %}
+            <div class="candidate" data-id="{{candidate}}">{{candidate}}</div>
+            {% endfor %}
         </div>
       </div>
       <div class="panel">
