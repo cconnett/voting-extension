@@ -8,7 +8,7 @@
 </head>
 <body>
   <div class="app">
-    <h1>Ranked Choice Ballot</h1>
+    <h1>{{title}}</h1>
     <div class="columns">
       <div class="panel">
         <div class="panel-title">Candidates</div>
@@ -22,6 +22,9 @@
         <div class="panel-title">Your Ranking</div>
         <div class="drop-zone" id="ballot">
           <span class="empty-hint" id="ballot-hint">Click a candidate to rank them</span>
+            {% for candidate in ranking %}
+            <div class="candidate" data-id="{{candidate}}">{{candidate}}</div>
+            {% endfor %}
         </div>
       </div>
     </div>
