@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Poll</title>
+  <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
+  <style>
+    .form-panel {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #7c7c9b;
+    }
+
+    .field input,
+    .field textarea {
+      background: #0f3460;
+      border: 1px solid #1a4a80;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-family: inherit;
+      color: #e0e0e0;
+      transition: border-color 0.15s;
+      outline: none;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      border-color: #a78bfa;
+    }
+
+    .field textarea {
+      resize: vertical;
+      min-height: 180px;
+      line-height: 1.5;
+    }
+
+    .field .hint {
+      font-size: 0.78rem;
+      color: #4a4a6a;
+    }
+
+    .submit-btn {
+      background: #4c2da0;
+      border: 1px solid #a78bfa;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e0e0e0;
+      cursor: pointer;
+      align-self: flex-end;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .submit-btn:hover {
+      background: #5c3db0;
+      border-color: #c4a8ff;
+    }
+
+    .status {
+      font-size: 0.9rem;
+      text-align: center;
+      padding: 10px;
+      border-radius: 8px;
+      display: none;
+    }
+
+    .status.success {
+      background: #1a3a2e;
+      color: #6ee7b7;
+      border: 1px solid #2a5a4a;
+    }
+
+    .status.error {
+      background: #3a1a1a;
+      color: #fca5a5;
+      border: 1px solid #5a2a2a;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>Create Poll</h1>
+    <div class="form-panel">
+      <div class="field">
+        <label for="title">Poll Title</label>
+        <input type="text" id="title" placeholder="e.g., What do we play next?" required>
+      </div>
+      <div class="field">
+        <label for="channel_id">Channel ID</label>
+        <input type="text" id="channel_id" placeholder="Twitch channel ID" required>
+      </div>
+      <div class="field">
+        <label for="candidates">Candidates</label>
+        <textarea id="candidates" placeholder="Enter one candidate per line"></textarea>
+        <span class="hint">One candidate per line. Blank lines are ignored.</span>
+      </div>
+      <div class="status" id="status"></div>
+      <button class="submit-btn" id="submit-btn">Create Poll</button>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('submit-btn').addEventListener('click', async () => {
+      const title = document.getElementById('title').value.trim();
+      const channel_id = document.getElementById('channel_id').value.trim();
+      const raw = document.getElementById('candidates').value;
+      const candidates = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      const statusEl = document.getElementById('status');
+
+      if (!title || !channel_id || candidates.length === 0) {
+        statusEl.textContent = 'Please fill in all fields and provide at least one candidate.';
+        statusEl.className = 'status error';
+        statusEl.style.display = 'block';
+        return;
+      }
+
+      const body = new URLSearchParams();
+      body.set('title', title);
+      body.set('channel_id', channel_id);
+      body.set('candidates', JSON.stringify(candidates));
+
+      try {
+        const resp = await fetch('{{url_for("create")}}', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: body.toString(),
+        });
+        if (resp.ok) {
+          statusEl.textContent = 'Poll created successfully.';
+          statusEl.className = 'status success';
+        } else {
+          const text = await resp.text();
+          statusEl.textContent = `Error ${resp.status}: ${text}`;
+          statusEl.className = 'status error';
+        }
+      } catch (e) {
+        statusEl.textContent = `Request failed: ${e.message}`;
+        statusEl.className = 'status error';
+      }
+      statusEl.style.display = 'block';
+    });
+  </script>
+</body>
+</html>

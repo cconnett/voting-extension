@@ -43,6 +43,13 @@ def hello():
     return f"{r.url=}<br>script name: {r.environ.get('SCRIPT_NAME')}<br>path_info: {r.environ.get('PATH_INFO')}"
 
 
+@app.route("/new")
+def new():
+    return flask.render_template(
+        "create.html",
+    )
+
+
 @app.route("/create", methods=["POST"])
 def create():
     new_id = uuid.uuid4()
