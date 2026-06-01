@@ -22,8 +22,8 @@ class ScriptNameFix:
 
 
 app = flask.Flask(__name__)
-app.config["APPLICATION_ROOT"] = "/polls"
-app.wsgi_app = ScriptNameFix(app.wsgi_app, "/polls")
+# app.config["APPLICATION_ROOT"] = "/polls"
+# app.wsgi_app = ScriptNameFix(app.wsgi_app, "/polls")
 
 
 @contextlib.contextmanager
@@ -36,7 +36,7 @@ def db_connection():
         yield conn
 
 
-@app.route("/debug")
+# @app.route("/debug")
 def hello():
     r = flask.request
     return f"{r.url=}<br>script name: {r.environ.get('SCRIPT_NAME')}<br>path_info: {r.environ.get('PATH_INFO')}"
@@ -58,7 +58,7 @@ def create():
         )
 
 
-@app.route("/open/<uuid:poll_id>", methods=["POST"])
+# @app.route("/open/<uuid:poll_id>", methods=["POST"])
 def open(poll_id):
     with db_connection() as conn:
         # FIXME: AUTHENTICATE THE STREAMER
