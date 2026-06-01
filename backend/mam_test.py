@@ -7,7 +7,7 @@ class MamTest(unittest.TestCase):
 
     def test_basicballot(self):
         self.assertEqual(
-            ["a", "b", "c"], mam.MaximizeAffirmedMajorities([["a", "b", "c"]])
+            ["a", "b", "c"], mam.MaximizeAffirmedMajorities([["a", "b", "c"]])[0]
         )
 
     def test_tupleballot(self):
@@ -21,7 +21,7 @@ class MamTest(unittest.TestCase):
                         ("c"),
                     ]
                 ]
-            ),
+            )[0],
         )
 
     def test_unanimity(self):
@@ -32,7 +32,7 @@ class MamTest(unittest.TestCase):
                     ["a", "b", "c"],
                     ["a", "b", "c"],
                 ]
-            ),
+            )[0],
         )
 
     def test_outvoted(self):
@@ -44,7 +44,7 @@ class MamTest(unittest.TestCase):
                     ["c", "b", "a"],
                     ["c", "b", "a"],
                 ]
-            ),
+            )[0],
         )
 
     def test_ambivalence(self):
@@ -55,7 +55,7 @@ class MamTest(unittest.TestCase):
                     ["a", ("b", "c")],
                     [("a", "b"), "c"],
                 ]
-            ),
+            )[0],
         )
 
     def test_full_tie(self):
@@ -70,7 +70,7 @@ class MamTest(unittest.TestCase):
                     [("e", "d")],
                 ],
                 tiebreaker=mam.Tiebreaker.NONE,
-            ),
+            )[0],
         )
 
     def test_broken_tie_RVH(self):
@@ -86,7 +86,7 @@ class MamTest(unittest.TestCase):
                 ],
                 tiebreaker=mam.Tiebreaker.RVH,
                 seed=1,
-            ),
+            )[0],
         )
         self.assertEqual(
             ["c", "a", "b", {"d", "e"}],
@@ -100,7 +100,7 @@ class MamTest(unittest.TestCase):
                 ],
                 tiebreaker=mam.Tiebreaker.RVH,
                 seed=5,
-            ),
+            )[0],
         )
 
     def test_broken_tie_LINEAR(self):
@@ -116,7 +116,7 @@ class MamTest(unittest.TestCase):
                 ],
                 tiebreaker=mam.Tiebreaker.LINEAR,
                 seed=1,
-            ),
+            )[0],
         )
         self.assertEqual(
             ["c", "a", "b", "d", "e"],
@@ -130,7 +130,7 @@ class MamTest(unittest.TestCase):
                 ],
                 tiebreaker=mam.Tiebreaker.LINEAR,
                 seed=5,
-            ),
+            )[0],
         )
 
     def test_known_outcome(self):
@@ -141,7 +141,7 @@ class MamTest(unittest.TestCase):
                 + [["b", "a", "c"]] * 12
                 + [["b", "c", "a"]] * 8
                 + [["c", "b", "a"]] * 44
-            ),
+            )[0],
         )
 
     def test_rps(self):
@@ -149,7 +149,7 @@ class MamTest(unittest.TestCase):
             ["r", "s", "p"],
             mam.MaximizeAffirmedMajorities(
                 [["r", "s", "p"]] * 40 + [["s", "p", "r"]] * 35 + [["p", "r", "s"]] * 25
-            ),
+            )[0],
         )
 
     def test_wikipedia_tennesee(self):
@@ -160,7 +160,7 @@ class MamTest(unittest.TestCase):
                 + [["nashville", "chattanooga", "knoxville", "memphis"]] * 26
                 + [["chattanooga", "knoxville", "nashville", "memphis"]] * 15
                 + [["knoxville", "chattanooga", "nashville", "memphis"]] * 17
-            ),
+            )[0],
         )
 
 

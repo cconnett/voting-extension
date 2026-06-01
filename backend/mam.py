@@ -24,7 +24,7 @@ def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.NONE, seed=None
     """Return the social choice ordering and the matrix of pairwise defeats."""
     # Normalize ballots by wrapping naked entries in a singleton tuple.
     ballots = [
-        [(rank,) if not isinstance(rank, tuple) else rank for rank in ballot]
+        [(rank,) if not isinstance(rank, (tuple, list)) else rank for rank in ballot]
         for ballot in ballots
     ]
 
