@@ -5,6 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ranked Choice Voting</title>
   <link rel="stylesheet" href="{{url_for('static', filename='style.css')}}">
+  <style>
+    .submit-area {
+      margin-top: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 16px;
+    }
+
+    .submit-status {
+      font-size: 0.9rem;
+      color: #7c7c9b;
+    }
+
+    .submit-status.pending { color: #a78bfa; }
+    .submit-status.success { color: #6ee7b7; }
+    .submit-status.error   { color: #fca5a5; }
+
+    .submit-btn {
+      background: #4c2da0;
+      border: 1px solid #a78bfa;
+      border-radius: 8px;
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e0e0e0;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    }
+
+    .submit-btn:hover:not(:disabled) {
+      background: #5c3db0;
+      border-color: #c4a8ff;
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  </style>
 </head>
 <body>
   <div class="app">
@@ -28,14 +68,36 @@
         </div>
       </div>
     </div>
+    <div class="submit-area">
+      <span class="submit-status" id="submit-status"></span>
+      <button class="submit-btn" id="submit-btn">Submit Vote</button>
+    </div>
   </div>
 
   <script>
+    const DUMMY_TOKEN = 'dummy_token';
+    const CAST_VOTE_URL = '{{url_for("cast_vote", poll_id=request.view_args.poll_id)}}';
+
     const candidatesEl = document.getElementById('candidates');
-    const ballotEl = document.getElementById('ballot');
-    const hint = document.getElementById('ballot-hint');
+    const ballotEl     = document.getElementById('ballot');
+    const hint         = document.getElementById('ballot-hint');
+    const submitBtn    = document.getElementById('submit-btn');
+    const statusEl     = document.getElementById('submit-status');
 
     let draggedItem = null;
+    let lastSubmittedRanking = null; // null = never submitted this session
+
+    // Convert any pre-rendered ranking items (from server) to interactive ballot-items.
+    {
+      const preRanked = [...ballotEl.querySelectorAll('.candidate')];
+      if (preRanked.length > 0) {
+        hint.remove();
+        preRanked.forEach(el => el.replaceWith(createBallotItem(el.dataset.id, el.textContent.trim())));
+        updateRanks();
+        lastSubmittedRanking = getCurrentRanking();
+        setVotedState();
+      }
+    }
 
     candidatesEl.addEventListener('click', e => {
       const candidate = e.target.closest('.candidate');
@@ -43,44 +105,57 @@
       moveToBallot(candidate);
     });
 
-    function moveToBallot(candidate) {
-      hint.remove();
+    submitBtn.addEventListener('click', submitVote);
 
+    // --- ballot manipulation ---
+
+    function createBallotItem(id, text) {
       const item = document.createElement('div');
       item.className = 'ballot-item';
       item.draggable = true;
-      item.dataset.id = candidate.dataset.id;
+      item.dataset.id = id;
 
       const rank = document.createElement('span');
       rank.className = 'rank-num';
 
       const label = document.createElement('span');
-      label.textContent = candidate.textContent;
+      label.textContent = text;
 
       const removeBtn = document.createElement('button');
       removeBtn.className = 'remove-btn';
       removeBtn.textContent = '✕';
       removeBtn.title = 'Remove';
-      removeBtn.addEventListener('click', () => removeFromBallot(item, candidate));
+      removeBtn.addEventListener('click', () => removeFromBallot(item));
 
       item.append(rank, label, removeBtn);
       attachDragEvents(item);
-      ballotEl.appendChild(item);
-      candidate.remove();
-      updateRanks();
+      return item;
     }
 
-    function removeFromBallot(item, candidate) {
+    function moveToBallot(candidate) {
+      hint.remove();
+      ballotEl.appendChild(createBallotItem(candidate.dataset.id, candidate.textContent.trim()));
+      candidate.remove();
+      updateRanks();
+      onBallotChange();
+    }
+
+    function removeFromBallot(item) {
+      const id   = item.dataset.id;
+      const text = item.querySelectorAll('span')[1].textContent;
       item.remove();
+
       const restored = document.createElement('div');
       restored.className = 'candidate';
-      restored.dataset.id = candidate.dataset.id;
-      restored.textContent = candidate.textContent;
+      restored.dataset.id = id;
+      restored.textContent = text;
       candidatesEl.appendChild(restored);
+
       updateRanks();
       if (ballotEl.querySelectorAll('.ballot-item').length === 0) {
         ballotEl.appendChild(hint);
       }
+      onBallotChange();
     }
 
     function attachDragEvents(item) {
@@ -95,6 +170,7 @@
         document.querySelectorAll('.ballot-item').forEach(i => i.classList.remove('drag-over'));
         draggedItem = null;
         updateRanks();
+        onBallotChange();
       });
 
       item.addEventListener('dragover', e => {
@@ -102,17 +178,10 @@
         if (!draggedItem || draggedItem === item) return;
         item.classList.add('drag-over');
         const rect = item.getBoundingClientRect();
-        const insertBefore = e.clientY < rect.top + rect.height / 2;
-        if (insertBefore) {
-          ballotEl.insertBefore(draggedItem, item);
-        } else {
-          ballotEl.insertBefore(draggedItem, item.nextSibling);
-        }
+        ballotEl.insertBefore(draggedItem, e.clientY < rect.top + rect.height / 2 ? item : item.nextSibling);
       });
 
-      item.addEventListener('dragleave', () => {
-        item.classList.remove('drag-over');
-      });
+      item.addEventListener('dragleave', () => item.classList.remove('drag-over'));
 
       item.addEventListener('drop', e => {
         e.preventDefault();
@@ -121,10 +190,74 @@
     }
 
     function updateRanks() {
-      const items = ballotEl.querySelectorAll('.ballot-item');
-      items.forEach((item, i) => {
+      ballotEl.querySelectorAll('.ballot-item').forEach((item, i) => {
         item.querySelector('.rank-num').textContent = `${i + 1}.`;
       });
+    }
+
+    // --- submit state ---
+
+    function getCurrentRanking() {
+      return [...ballotEl.querySelectorAll('.ballot-item')].map(i => i.dataset.id);
+    }
+
+    function arraysEqual(a, b) {
+      return a.length === b.length && a.every((v, i) => v === b[i]);
+    }
+
+    function setVotedState() {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Voted!';
+      statusEl.textContent = '';
+      statusEl.className = 'submit-status';
+    }
+
+    function onBallotChange() {
+      if (lastSubmittedRanking === null) return;
+      if (arraysEqual(getCurrentRanking(), lastSubmittedRanking)) {
+        setVotedState();
+      } else {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Update Vote';
+        statusEl.textContent = '';
+        statusEl.className = 'submit-status';
+      }
+    }
+
+    // --- network ---
+
+    async function submitVote() {
+      const ranking = getCurrentRanking();
+      const rankingDict = {};
+      ranking.forEach((id, i) => { rankingDict[id] = i + 1; });
+
+      submitBtn.disabled = true;
+      statusEl.textContent = 'Submitting...';
+      statusEl.className = 'submit-status pending';
+
+      const body = new URLSearchParams();
+      body.set('token', DUMMY_TOKEN);
+      body.set('ranking', JSON.stringify(rankingDict));
+
+      try {
+        const resp = await fetch(CAST_VOTE_URL, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: body.toString(),
+        });
+        if (resp.ok) {
+          lastSubmittedRanking = ranking;
+          setVotedState();
+        } else {
+          submitBtn.disabled = false;
+          statusEl.textContent = `Error ${resp.status}`;
+          statusEl.className = 'submit-status error';
+        }
+      } catch (e) {
+        submitBtn.disabled = false;
+        statusEl.textContent = 'Request failed';
+        statusEl.className = 'submit-status error';
+      }
     }
   </script>
 </body>

@@ -161,16 +161,17 @@ def cast_vote(poll_id):
     token = flask.request.form["token"]  # FIXME
     ranking = flask.request.form["ranking"]
     with db_connection() as conn:
-        cur = conn.execute("SELECT open FROM polls WHERE poll_id=?", (str(poll_id),))
+        cur = conn.execute("SELECT open FROM polls WHERE id=?", (str(poll_id),))
         is_open = cur.fetchone()[0]
         if not is_open:
             abort(409)
         conn.execute(
             "INSERT OR REPLACE INTO ballots (poll_id, opaque_user_id, ranking) "
-            "VALUES (?, ?, ?, )",
+            "VALUES (?, ?, ?)",
             (
                 str(poll_id),
                 token,
                 ranking,
             ),
         )
+    return "OK"
