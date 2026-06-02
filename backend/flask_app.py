@@ -151,9 +151,9 @@ def winner(poll_id):
     return json.dumps(ordering[0])
 
 
-@app.route("/ballot/<uuid:poll_id>/<user_id>", methods=["GET"])
-def ballot(poll_id, user_id):
-    # token = flask.request.form["token"]  # FIXME
+@app.route("/ballot/<uuid:poll_id>", methods=["GET"])
+def ballot(poll_id):
+    token = flask.request.form["token"]  # FIXME
     with db_connection() as conn:
         cur = conn.execute(
             "SELECT title, candidates FROM polls WHERE id=?", (str(poll_id),)
