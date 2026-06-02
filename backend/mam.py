@@ -142,5 +142,5 @@ def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.NONE, seed=None
             generation[0] if len(generation) == 1 else set(generation)
             for generation in generations
         ],
-        pairwise_defeats,
+        preferences,
     )

@@ -86,8 +86,7 @@ def close(poll_id):
         conn.execute("UPDATE polls SET open=0 WHERE poll_id=?", (str(poll_id),))
 
 
-@app.route("/results/<uuid:poll_id>", methods=["GET"])
-def results(poll_id):
+def tablulate_results(poll_id):
     import mam
 
     with db_connection() as conn:
@@ -105,12 +104,44 @@ def results(poll_id):
     ballots = []
     for row in ranking_rows:
         ranking_dict = json.loads(row[0])
-        ballots.append(sorted(ranking_dict.items(), key=lambda pair: pair[1]))
-    ordering, defeat_matrix = mam.MaximizeAffirmedMajorities(
+        ballots.append(
+            (candidate,)
+            for candidate, unused_rank in sorted(
+                ranking_dict.items(), key=lambda pair: pair[1]
+            )
+        )
+    return mam.MaximizeAffirmedMajorities(
         ballots,
         tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
         seed=salt,
     )
+
+
+def render_matrix(matrix, ordering):
+    def gen():
+        width = max(len(str(elt)) for row in matrix.values() for elt in row.values())
+        width = max(width, max(len(cand) for cand in ordering))
+        yield " " * (width + 1)
+        for col_key in ordering:
+            yield f"{col_key:{width}} "
+        yield "\n"
+        for row_key in ordering:
+            yield f"{row_key:{width}} "
+            for col_key in ordering:
+                if row_key == col_key:
+                    cell = ""
+                else:
+                    cell = matrix[row_key].get(col_key, 0)
+                yield f"{cell!s:{width}} "
+            yield "\n"
+
+    return "".join(gen())
+
+
+@app.route("/results/<uuid:poll_id>", methods=["GET"])
+def results(poll_id):
+    ordering, defeat_matrix = tablulate_results(poll_id)
+    return f"{ordering}<br><pre>{render_matrix(defeat_matrix, ordering)}</pre>"
 
 
 @app.route("/results/winner/<uuid:poll_id>", methods=["GET"])
