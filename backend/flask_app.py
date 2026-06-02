@@ -2,6 +2,7 @@ import contextlib
 import json
 import os.path
 import random
+import secrets
 import sqlite3
 import uuid
 
@@ -32,7 +33,6 @@ def db_connection():
     with sqlite3.connect(
         os.path.expanduser("~/polls.sqlite3"), autocommit=False
     ) as conn:
-        conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA foreign_keys=ON")
         yield conn
 
@@ -53,33 +53,37 @@ def new():
 @app.route("/create", methods=["POST"])
 def create():
     new_id = uuid.uuid4()
-    salt = uuid.uuid4()
+    salt = secrets.randbits(64)
     channel_id = flask.request.form["channel_id"]
     title = flask.request.form["title"]
     candidates = flask.request.form["candidates"]
     with db_connection() as conn:
         conn.execute(
-            "INSERT INTO polls VALUES (?, ?, ?, ?, ?)",
-            new_id.int,
-            salt.int,
-            channel_id,
-            title,
-            candidates,
+            "INSERT INTO polls (id, salt, channel_id, title, candidates) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (
+                str(new_id),
+                salt,
+                channel_id,
+                title,
+                candidates,
+            ),
         )
+    return "OK"
 
 
 # @app.route("/open/<uuid:poll_id>", methods=["POST"])
 def open(poll_id):
     with db_connection() as conn:
         # FIXME: AUTHENTICATE THE STREAMER
-        conn.execute("UPDATE polls SET open=1 WHERE poll_id=?", poll_id=poll_id.int)
+        conn.execute("UPDATE polls SET open=1 WHERE poll_id=?", (str(poll_id),))
 
 
 @app.route("/close/<uuid:poll_id>", methods=["POST"])
 def close(poll_id):
     with db_connection() as conn:
         # FIXME: AUTHENTICATE THE STREAMER
-        conn.execute("UPDATE polls SET open=0 WHERE poll_id=?", poll_id=poll_id.int)
+        conn.execute("UPDATE polls SET open=0 WHERE poll_id=?", (str(poll_id),))
 
 
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
@@ -89,9 +93,13 @@ def results(poll_id):
     with db_connection() as conn:
         cur = conn.cursor()
         cur.arraysize = 16
-        cur.execute("SELECT candidates, salt, open FROM polls WHERE id=?", poll_id.int)
+        cur.execute(
+            "SELECT candidates, salt, open FROM polls WHERE id=?", (str(poll_id),)
+        )
         candidate_string, salt, is_open = cur.fetchone()
-        cur = conn.execute("SELECT ranking FROM ballots WHERE poll_id=?", poll_id.int)
+        cur = conn.execute(
+            "SELECT ranking FROM ballots WHERE poll_id=?", (str(poll_id),)
+        )
         ranking_rows = cur.fetchall()
     candidates = json.loads(candidate_string)
     ballots = []
@@ -112,32 +120,36 @@ def winner(poll_id):
     return json.dumps(ordering[0])
 
 
-@app.route("/ballot/<uuid:poll_id>", methods=["GET"])
-def ballot(poll_id):
-    token = flask.request.form["token"]  # FIXME
+@app.route("/ballot/<uuid:poll_id>/<user_id>", methods=["GET"])
+def ballot(poll_id, user_id):
+    # token = flask.request.form["token"]  # FIXME
     with db_connection() as conn:
         cur = conn.execute(
-            "SELECT title, candidates FROM polls WHERE id=?", poll_id.int
+            "SELECT title, candidates FROM polls WHERE id=?", (str(poll_id),)
         )
         row = cur.fetchone()
         if not row:
             abort(404)
         cur = conn.execute(
             "SELECT ranking FROM ballots WHERE poll_id=? AND opaque_user_id=?",
-            poll_id.int,
-            token,
+            (
+                str(poll_id),
+                user_id,
+            ),
         )
         ranking = cur.fetchone()
-    title, candidates_string = row[0]
+    title, candidates_string = row
     candidates = json.loads(candidates_string)
     random.shuffle(candidates)
     if ranking:
-        ranking = json.loads(ranking[0])
+        ranking = json.loads(ranking)
         for candidate in ranking:
             candidates.remove(candidate)
+    else:
+        ranking = []
 
     return flask.render_template(
-        "templates/ballot.html",
+        "ballot.html",
         title=title,
         candidates=candidates,
         ranking=ranking,
@@ -149,13 +161,16 @@ def cast_vote(poll_id):
     token = flask.request.form["token"]  # FIXME
     ranking = flask.request.form["ranking"]
     with db_connection() as conn:
-        cur = conn.execute("SELECT open FROM polls WHERE poll_id=?", poll_id.int)
+        cur = conn.execute("SELECT open FROM polls WHERE poll_id=?", (str(poll_id),))
         is_open = cur.fetchone()[0]
         if not is_open:
             abort(409)
         conn.execute(
-            "INSERT OR REPLACE INTO ballots VALUES (?, ?, ?)",
-            poll_id.int,
-            token,
-            ranking,
+            "INSERT OR REPLACE INTO ballots (poll_id, opaque_user_id, ranking) "
+            "VALUES (?, ?, ?, )",
+            (
+                str(poll_id),
+                token,
+                ranking,
+            ),
         )

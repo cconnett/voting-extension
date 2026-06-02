@@ -1,5 +1,5 @@
 CREATE TABLE polls (
-    id INTEGER PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     salt INTEGER,
     channel_id TEXT NOT NULL,
     title TEXT,
@@ -14,3 +14,4 @@ CREATE TABLE ballots (
     cast_at TEXT DEFAULT (datetime('now')),
     PRIMARY KEY (poll_id, opaque_user_id)
 ) WITHOUT ROWID;
+PRAGMA journal_mode=WAL;
