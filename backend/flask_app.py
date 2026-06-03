@@ -1,4 +1,5 @@
 import contextlib
+import itertools
 import json
 import os.path
 import random
@@ -140,8 +141,27 @@ def render_matrix(matrix, ordering):
 
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
 def results(poll_id):
-    ordering, defeat_matrix = tablulate_results(poll_id)
-    return f"{ordering}<br><pre>{render_matrix(defeat_matrix, ordering)}</pre>"
+    ordering, matrix = tablulate_results(poll_id)
+    ret = f"{ordering}<br>"
+    for winner, loser in itertools.pairwise(ordering):
+        if isinstance(winner, tuple):
+            exemplar_winner = winner[0]
+        else:
+            exemplar_winner = winner
+        if isinstance(loser, tuple):
+            exemplar_loser = loser[0]
+        else:
+            exemplar_loser = loser
+        affirmed = matrix[exemplar_winner][exemplar_loser]
+        disaffirmed = matrix[exemplar_loser][exemplar_winner]
+        ret += (
+            f"{affirmed/(affirmed + disaffirmed):.0%} prefer {winner} to {loser}.<br>"
+        )
+    winner = ordering[0]
+    if all(matrix[winner][x] > matrix[x][winner] or x == winner for x in ordering):
+        ret += f"{winner} is a Condorcet winner.<br>"
+    ret += f"<pre>{render_matrix(matrix, ordering)}</pre>"
+    return ret
 
 
 @app.route("/results/winner/<uuid:poll_id>", methods=["GET"])
