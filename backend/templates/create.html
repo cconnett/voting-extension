@@ -29,12 +29,17 @@
   </div>
 
   <script>
-    document.getElementById('submit-btn').addEventListener('click', async () => {
-      const title = document.getElementById('title').value.trim();
+    const CREATE_URL = '{{url_for("create")}}';
+    const RESULTS_URL_TEMPLATE = '{{url_for("results", poll_id="00000000-0000-0000-0000-000000000000")}}';
+
+    const submitBtn = document.getElementById('submit-btn');
+    const statusEl  = document.getElementById('status');
+
+    submitBtn.addEventListener('click', async () => {
+      const title      = document.getElementById('title').value.trim();
       const channel_id = document.getElementById('channel_id').value.trim();
-      const raw = document.getElementById('candidates').value;
+      const raw        = document.getElementById('candidates').value;
       const candidates = raw.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-      const statusEl = document.getElementById('status');
 
       if (!title || !channel_id || candidates.length === 0) {
         statusEl.textContent = 'Please fill in all fields and provide at least one candidate.';
@@ -43,30 +48,37 @@
         return;
       }
 
+      submitBtn.disabled = true;
+      statusEl.style.display = 'none';
+
       const body = new URLSearchParams();
       body.set('title', title);
       body.set('channel_id', channel_id);
       body.set('candidates', JSON.stringify(candidates));
 
       try {
-        const resp = await fetch('{{url_for("create")}}', {
+        const resp = await fetch(CREATE_URL, {
           method: 'POST',
           headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           body: body.toString(),
         });
         if (resp.ok) {
-          statusEl.textContent = 'Poll created successfully.';
-          statusEl.className = 'status success';
+          const pollId = (await resp.text()).trim();
+          window.location.href = RESULTS_URL_TEMPLATE.replace(
+            '00000000-0000-0000-0000-000000000000', pollId);
         } else {
           const text = await resp.text();
           statusEl.textContent = `Error ${resp.status}: ${text}`;
           statusEl.className = 'status error';
+          statusEl.style.display = 'block';
+          submitBtn.disabled = false;
         }
       } catch (e) {
         statusEl.textContent = `Request failed: ${e.message}`;
         statusEl.className = 'status error';
+        statusEl.style.display = 'block';
+        submitBtn.disabled = false;
       }
-      statusEl.style.display = 'block';
     });
   </script>
 </body>

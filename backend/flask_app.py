@@ -55,6 +55,9 @@ def new():
 def create():
     new_id = uuid.uuid4()
     salt = secrets.randbits(64)
+    if salt & 1 << 63:
+        # sqlite INTs are 64-bit signed, so wrap the value into the signed regime.
+        salt -= 1 << 64
     channel_id = flask.request.form["channel_id"]
     title = flask.request.form["title"]
     candidates = flask.request.form["candidates"]
@@ -87,7 +90,7 @@ def close(poll_id):
         conn.execute("UPDATE polls SET open=0 WHERE poll_id=?", (str(poll_id),))
 
 
-def tablulate_results(poll_id):
+def tabulate_results(poll_id):
     import mam
 
     with db_connection() as conn:
@@ -114,10 +117,12 @@ def tablulate_results(poll_id):
     return (
         mam.MaximizeAffirmedMajorities(
             ballots,
+            candidates=candidates,
             tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
             seed=salt,
         ),
         is_open,
+        len(ranking_rows),
     )
 
 
@@ -144,15 +149,19 @@ def render_matrix(matrix, ordering):
 
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
 def results(poll_id):
-    (ordering, matrix), is_open = tablulate_results(poll_id)
-    ret = f"Poll is {'open' if is_open else 'closed'}.<br>{ordering}<br>"
+    (ordering, matrix), is_open, num_ballots = tabulate_results(poll_id)
+    ret = f"Poll is {'open' if is_open else 'closed'}.<br>"
+    ret += f"{ordering}<br>"
+    ret += f"Ballots received: {num_ballots}<br>"
+    if num_ballots == 0:
+        return ret
     for winner, loser in itertools.pairwise(ordering):
-        if isinstance(winner, tuple):
-            exemplar_winner = winner[0]
+        if isinstance(winner, set):
+            exemplar_winner = next(iter(winner))
         else:
             exemplar_winner = winner
-        if isinstance(loser, tuple):
-            exemplar_loser = loser[0]
+        if isinstance(loser, set):
+            exemplar_loser = next(iter(loser))
         else:
             exemplar_loser = loser
         affirmed = matrix[exemplar_winner][exemplar_loser]

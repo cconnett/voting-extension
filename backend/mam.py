@@ -20,7 +20,9 @@ class Tiebreaker(enum.Enum):
     LINEAR = 2
 
 
-def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.NONE, seed=None):
+def MaximizeAffirmedMajorities(
+    ballots, /, candidates=(), tiebreaker=Tiebreaker.NONE, seed=None
+):
     """Return the social choice ordering and the matrix of pairwise defeats."""
     # Normalize ballots by wrapping naked entries in a singleton tuple.
     ballots = [
@@ -29,7 +31,7 @@ def MaximizeAffirmedMajorities(ballots, /, tiebreaker=Tiebreaker.NONE, seed=None
     ]
 
     # Any value mentioned on any ballot is a candidate. Collect them all.
-    candidates = set()
+    candidates = set(candidates)
     for ballot in ballots:
         for rank in ballot:
             candidates |= set(rank)
