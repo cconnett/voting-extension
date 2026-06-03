@@ -70,7 +70,7 @@ def create():
                 candidates,
             ),
         )
-    return "OK"
+    return str(new_id)
 
 
 # @app.route("/open/<uuid:poll_id>", methods=["POST"])
@@ -111,10 +111,13 @@ def tablulate_results(poll_id):
                 ranking_dict.items(), key=lambda pair: pair[1]
             )
         )
-    return mam.MaximizeAffirmedMajorities(
-        ballots,
-        tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
-        seed=salt,
+    return (
+        mam.MaximizeAffirmedMajorities(
+            ballots,
+            tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
+            seed=salt,
+        ),
+        is_open,
     )
 
 
@@ -141,8 +144,8 @@ def render_matrix(matrix, ordering):
 
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
 def results(poll_id):
-    ordering, matrix = tablulate_results(poll_id)
-    ret = f"{ordering}<br>"
+    (ordering, matrix), is_open = tablulate_results(poll_id)
+    ret = f"Poll is {'open' if is_open else 'closed'}.<br>{ordering}<br>"
     for winner, loser in itertools.pairwise(ordering):
         if isinstance(winner, tuple):
             exemplar_winner = winner[0]
@@ -158,8 +161,9 @@ def results(poll_id):
             f"{affirmed/(affirmed + disaffirmed):.0%} prefer {winner} to {loser}.<br>"
         )
     winner = ordering[0]
-    if all(matrix[winner][x] > matrix[x][winner] or x == winner for x in ordering):
-        ret += f"{winner} is a Condorcet winner.<br>"
+    if not isinstance(winner, tuple):
+        if all(matrix[winner][x] > matrix[x][winner] or x == winner for x in ordering):
+            ret += f"{winner} is a Condorcet winner.<br>"
     ret += f"<pre>{render_matrix(matrix, ordering)}</pre>"
     return ret
 
