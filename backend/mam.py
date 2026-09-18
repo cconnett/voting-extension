@@ -3,20 +3,22 @@ import enum
 import itertools
 import logging
 import random
+from typing import List
 
 import networkx
 
 
 class Tiebreaker(enum.Enum):
-    # Return ties as sets within the ordering.
+    # Return a list of (potentially singleton) sets of tied candidates.
     NONE = 0
-    # Random Voter Hierarchy: Break ties with the preferences of a random ballot,
-    # cascading to additional ballots when the tie remains unresolved. Ties are still
-    # possible if no voter expresses any preference between two candidates; ties are
-    # returned as sets.
+    # Random Voter Hierarchy: Break ties with the preferences of a random
+    # ballot, cascading to additional ballots when the tie remains
+    # unresolved. Ties are still possible if no voter expresses any preference
+    # between two candidates. Return a list of (potentially singleton) sets of
+    # tied candidates.
     RVH = 1
-    # As RVH, but break any remaining ties with a random total ordering; returns a total
-    # ordering of the candidates.
+    # As RVH, but break any remaining ties with a random total ordering. Return
+    # a list of candidates.
     LINEAR = 2
 
 
@@ -53,8 +55,8 @@ def MaximizeAffirmedMajorities(
     preferences = collections.defaultdict(collections.Counter)
 
     # Make a tiebreak ordering that will ideally be a total linear ordering
-    # after processing all ballots. (If it is not, some candidates may be tied
-    # in the final ranking, or ties broken by chance.)
+    # after processing all ballots. If it is not, some candidates may be tied
+    # in the final ranking.
     tiebreak_graph = networkx.DiGraph()
     tiebreak_graph.add_nodes_from(candidates)
 
@@ -73,6 +75,8 @@ def MaximizeAffirmedMajorities(
                     preferences[a][b] += 1
 
     if tiebreaker == Tiebreaker.LINEAR:
+        # Apply a final random total ordering to the tiebreak ordering. This
+        # guarantees.
         for a, b in itertools.product(candidates, candidates):
             if linear_breaker.index(a) < linear_breaker.index(
                 b
@@ -139,10 +143,7 @@ def MaximizeAffirmedMajorities(
             ):
                 final_order.add_edge(a, b)
     generations = list(networkx.topological_generations(final_order))
-    return (
-        [
-            generation[0] if len(generation) == 1 else set(generation)
-            for generation in generations
-        ],
-        preferences,
-    )
+    final_ordering = [set(generation) for generation in generations]
+    if all(len(group) == 1 for group in final_ordering):
+        final_ordering = [next(iter(group)) for group in final_ordering]
+    return (final_ordering, preferences)

@@ -75,7 +75,7 @@ class MamTest(unittest.TestCase):
 
     def test_broken_tie_RVH(self):
         self.assertEqual(
-            ["a", "b", "c", {"d", "e"}],
+            [{"a"}, {"b"}, {"c"}, {"d", "e"}],
             mam.MaximizeAffirmedMajorities(
                 [
                     ["a", "b", "c"],
@@ -89,7 +89,7 @@ class MamTest(unittest.TestCase):
             )[0],
         )
         self.assertEqual(
-            ["c", "a", "b", {"d", "e"}],
+            [{"c"}, {"a"}, {"b"}, {"d", "e"}],
             mam.MaximizeAffirmedMajorities(
                 [
                     ["a", "b", "c"],
