@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAM result ladder</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font: 15px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0; padding: 2rem 1.5rem; max-width: 760px;
+    color: #2C2C2A; background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    body { color: #E8E6DD; background: #1f1f1d; }
+  }
+  h1 { font-size: 20px; font-weight: 500; margin: 0 0 .25rem; }
+  p.sub { color: #888780; margin: 0 0 1.5rem; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 20px; font-size: 13px; color: #888780; margin: 0 0 1rem; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .sw { width: 26px; height: 0; }
+  #wrap { width: 100%; }
+  canvas { display: block; max-width: 100%; }
+</style>
+</head>
+<body>
+  <h1>MAM result ladder</h1>
+  <p class="sub">Affirmed adjacent margins on the rungs; disaffirmed reversals as dashed back-links. Redundant affirmations are omitted.</p>
+  <div class="legend">
+    <span><svg class="sw" viewBox="0 0 26 2"><line x1="0" y1="1" x2="26" y2="1" stroke="#1D9E75" stroke-width="3"/></svg>Direct step · affirmed margin</span>
+    <span><svg class="sw" viewBox="0 0 26 2"><line x1="0" y1="1" x2="26" y2="1" stroke="#D85A30" stroke-width="2" stroke-dasharray="5 4"/></svg>Reversal · disaffirmed majority</span>
+  </div>
+  <div id="wrap"><canvas id="ladder"></canvas></div>
+
+<script type="module">
+    import { renderMamLadder, fromMatrix } from '{{url_for("static", filename="mam-ladder.js")}}';
+
+const order = {{order|safe}};
+const pref = {{matrix|safe}};
+
+
+const canvas = document.getElementById('ladder');
+const wrap = document.getElementById('wrap');
+
+function draw() {
+    renderMamLadder(canvas, { order, pref }, {
+    width: wrap.clientWidth
+    // formatMargin: (m) => `+${m}`,   // optional: customise the rung/back-link label
+    // theme: 'dark',                  // optional: force a theme instead of auto
+  });
+}
+
+draw();
+addEventListener('resize', draw);
+if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+</script>
+</body>
+</html>

@@ -10,6 +10,8 @@ import uuid
 import flask
 import jwt
 
+import mam
+
 
 class ScriptNameFix:
     def __init__(self, app, script_name):
@@ -76,23 +78,23 @@ def create():
     return str(new_id)
 
 
-# @app.route("/open/<uuid:poll_id>", methods=["POST"])
+@app.route("/open/<uuid:poll_id>", methods=["POST", "GET"])
 def open(poll_id):
     with db_connection() as conn:
         # FIXME: AUTHENTICATE THE STREAMER
-        conn.execute("UPDATE polls SET open=1 WHERE poll_id=?", (str(poll_id),))
+        conn.execute("UPDATE polls SET open=1 WHERE id=?", (str(poll_id),))
+    return f"Poll {poll_id} reopened."
 
 
-@app.route("/close/<uuid:poll_id>", methods=["POST"])
+@app.route("/close/<uuid:poll_id>", methods=["GET", "POST"])
 def close(poll_id):
     with db_connection() as conn:
         # FIXME: AUTHENTICATE THE STREAMER
-        conn.execute("UPDATE polls SET open=0 WHERE poll_id=?", (str(poll_id),))
+        conn.execute("UPDATE polls SET open=0 WHERE id=?", (str(poll_id),))
+    return f"Poll {poll_id} closed."
 
 
 def tabulate_results(poll_id):
-    import mam
-
     with db_connection() as conn:
         cur = conn.cursor()
         cur.arraysize = 16
@@ -103,10 +105,10 @@ def tabulate_results(poll_id):
         cur = conn.execute(
             "SELECT ranking FROM ballots WHERE poll_id=?", (str(poll_id),)
         )
-        ranking_rows = cur.fetchall()
+        rankings = cur.fetchall()
     candidates = json.loads(candidate_string)
     ballots = []
-    for row in ranking_rows:
+    for row in rankings:
         ranking_dict = json.loads(row[0])
         ballots.append(
             (candidate,)
@@ -122,33 +124,44 @@ def tabulate_results(poll_id):
             seed=salt,
         ),
         is_open,
-        len(ranking_rows),
+        len(rankings),
     )
 
 
 def render_matrix(matrix, ordering):
     def gen():
+        if isinstance(ordering[0], set):
+            labels = {str(list(group)): next(iter(group)) for group in ordering}
+        else:
+            labels = {str(cand): cand for cand in ordering}
         width = max(len(str(elt)) for row in matrix.values() for elt in row.values())
-        width = max(width, max(len(cand) for cand in ordering))
+        width = max(width, max(len(cand) for cand in labels))
         yield " " * (width + 1)
-        for col_key in ordering:
+        print(matrix)
+        for col_key, col_exemplar in labels.items():
             yield f"{col_key:{width}} "
         yield "\n"
-        for row_key in ordering:
+        for row_key, row_exemplar in labels.items():
             yield f"{row_key:{width}} "
-            for col_key in ordering:
+            for col_key, col_exemplar in labels.items():
                 if row_key == col_key:
                     cell = ""
                 else:
-                    cell = matrix[row_key].get(col_key, 0)
+                    cell = matrix[row_exemplar][col_exemplar]
                 yield f"{cell!s:{width}} "
             yield "\n"
 
     return "".join(gen())
 
 
-@app.route("/results/<uuid:poll_id>", methods=["GET"])
-def results(poll_id):
+def Exemplar(obj_or_set):
+    if isinstance(obj_or_set, set):
+        return next(iter(obj_or_set))
+    return obj_or_set
+
+
+@app.route("/old_results/<uuid:poll_id>", methods=["GET"])
+def old_results(poll_id):
     (ordering, matrix), is_open, num_ballots = tabulate_results(poll_id)
     ret = f"Poll is {'open' if is_open else 'closed'}.<br>"
     ret += f"{ordering}<br>"
@@ -156,25 +169,32 @@ def results(poll_id):
     if num_ballots == 0:
         return ret
     for winner, loser in itertools.pairwise(ordering):
-        if isinstance(winner, set):
-            exemplar_winner = next(iter(winner))
-        else:
-            exemplar_winner = winner
-        if isinstance(loser, set):
-            exemplar_loser = next(iter(loser))
-        else:
-            exemplar_loser = loser
+        exemplar_winner = Exemplar(winner)
+        exemplar_loser = Exemplar(loser)
         affirmed = matrix[exemplar_winner][exemplar_loser]
         disaffirmed = matrix[exemplar_loser][exemplar_winner]
         ret += (
             f"{affirmed/(affirmed + disaffirmed):.0%} prefer {winner} to {loser}.<br>"
         )
     winner = ordering[0]
-    if not isinstance(winner, tuple):
+    if not isinstance(winner, set):
         if all(matrix[winner][x] > matrix[x][winner] or x == winner for x in ordering):
             ret += f"{winner} is a Condorcet winner.<br>"
     ret += f"<pre>{render_matrix(matrix, ordering)}</pre>"
     return ret
+
+
+@app.route("/results/<uuid:poll_id>", methods=["GET"])
+def results(poll_id):
+    (ordering, matrix), is_open, num_ballots = tabulate_results(poll_id)
+    ordering = [str(elt) if isinstance(elt, set) else elt for elt in ordering]
+    return flask.render_template(
+        "ladder.html",
+        order=json.dumps(ordering),
+        matrix=json.dumps(matrix),
+        is_open=is_open,
+        num_ballots=num_ballots,
+    )
 
 
 @app.route("/results/winner/<uuid:poll_id>", methods=["GET"])
@@ -184,9 +204,9 @@ def winner(poll_id):
     return json.dumps(ordering[0])
 
 
-@app.route("/ballot/<uuid:poll_id>", methods=["GET"])
-def ballot(poll_id):
-    token = flask.request.form["token"]  # FIXME
+@app.route("/ballot/<uuid:poll_id>/<user_id>", methods=["GET"])
+def ballot(poll_id, user_id):
+    # token = flask.request.form["token"]  # FIXME
     with db_connection() as conn:
         cur = conn.execute(
             "SELECT title, candidates FROM polls WHERE id=?", (str(poll_id),)
@@ -194,6 +214,7 @@ def ballot(poll_id):
         row = cur.fetchone()
         if not row:
             abort(404)
+        title, candidates_string = row
         cur = conn.execute(
             "SELECT ranking FROM ballots WHERE poll_id=? AND opaque_user_id=?",
             (
@@ -201,8 +222,8 @@ def ballot(poll_id):
                 user_id,
             ),
         )
-        ranking = cur.fetchone()
-    title, candidates_string = row
+        row = cur.fetchone()
+        ranking = row[0] if row else None
     candidates = json.loads(candidates_string)
     random.shuffle(candidates)
     if ranking:
@@ -234,7 +255,7 @@ def cast_vote(poll_id):
             "VALUES (?, ?, ?)",
             (
                 str(poll_id),
-                token,
+                "xyz",
                 ranking,
             ),
         )
