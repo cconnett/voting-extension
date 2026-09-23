@@ -3,13 +3,14 @@ import enum
 import itertools
 import logging
 import random
-from typing import List
+from typing import List, Set
 
 import networkx
 
+logging.basicConfig(level=logging.DEBUG)
+
 
 class Tiebreaker(enum.Enum):
-    # Return a list of (potentially singleton) sets of tied candidates.
     NONE = 0
     # Random Voter Hierarchy: Break ties with the preferences of a random
     # ballot, cascading to additional ballots when the tie remains
@@ -18,13 +19,13 @@ class Tiebreaker(enum.Enum):
     # tied candidates.
     RVH = 1
     # As RVH, but break any remaining ties with a random total ordering. Return
-    # a list of candidates.
+    # a list of singleton sets of candidates.
     LINEAR = 2
 
 
 def MaximizeAffirmedMajorities(
     ballots, /, candidates=(), tiebreaker=Tiebreaker.NONE, seed=None
-):
+) -> List[Set[str]]:
     """Return the social choice ordering and the matrix of pairwise defeats."""
     # Normalize ballots by wrapping naked entries in a singleton tuple.
     ballots = [
@@ -87,7 +88,6 @@ def MaximizeAffirmedMajorities(
         networkx.topological_generations(tiebreak_graph)
     ):
         tiebreak_ranks.update({candidate: index for candidate in generation})
-    logging.debug(tiebreak_ranks)
 
     # We are now ready to construct the final order.
     final_order = networkx.DiGraph()
@@ -118,24 +118,36 @@ def MaximizeAffirmedMajorities(
             # midway point and would now be processing inverses of defeats
             # already added. We're done.
             break
+        # Prune all defeats that do not apply alone.
+        group = [
+            ((a, b), unused_metric)
+            for ((a, b), unused_metric) in group
+            if not networkx.has_path(final_order, b, a)
+        ]
         if len(group) > 1:
             logging.debug("Probing application of tied group")
-        # Apply the pairwise defeat. If every edge in this group applies
-        # cleanly, it is kept. Otherwise, the group is hopelessly tied and must
-        # be ignored.
+        # Apply each pairwise defeat in the group. If every edge in this group
+        # applies cleanly, it is kept. Otherwise, the group is hopelessly tied
+        # and must be ignored.
         probe = final_order.copy()
         for (a, b), metric in group:
             if not networkx.has_path(probe, b, a):
                 logging.debug(f"Applying {a} > {b} : {metric}")
                 probe.add_edge(a, b)
             else:
-                logging.debug(f"Cannot apply {a} > {b} : {metric}")
+                logging.debug(f"> Cannot apply {a} > {b} : {metric}")
+                logging.debug("Rolling back.")
+                # Hopelessly tied. Roll back the order to before this loop.
                 probe = final_order
                 break
+        else:
+            if len(group) > 1:
+                logging.debug("Group applied cleanly. Committing.")
         final_order = probe
 
-    logging.debug(tiebreak_ranks)
     if tiebreaker != Tiebreaker.NONE:
+
+        logging.debug(f"Applying final tiebreaker. Ranks: {tiebreak_ranks}")
         # Finally, apply the tiebreak ordering to resolve any other unresolved loops.
         for a, b in itertools.product(candidates, candidates):
             if tiebreak_ranks[a] < tiebreak_ranks[b] and not networkx.has_path(
@@ -144,6 +156,4 @@ def MaximizeAffirmedMajorities(
                 final_order.add_edge(a, b)
     generations = list(networkx.topological_generations(final_order))
     final_ordering = [set(generation) for generation in generations]
-    if all(len(group) == 1 for group in final_ordering):
-        final_ordering = [next(iter(group)) for group in final_ordering]
     return (final_ordering, preferences)

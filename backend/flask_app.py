@@ -1,4 +1,5 @@
 import contextlib
+import dataclasses
 import itertools
 import json
 import os.path
@@ -6,6 +7,7 @@ import random
 import secrets
 import sqlite3
 import uuid
+from typing import List
 
 import flask
 import jwt
@@ -94,6 +96,31 @@ def close(poll_id):
     return f"Poll {poll_id} closed."
 
 
+@dataclasses.dataclass
+class Candidate:
+    seq: int
+    text: str
+
+
+@dataclasses.dataclass
+class Group:
+    seq: int
+    members: Candidate
+    # Margin over the next group.
+    margin: str
+    reversals: List["Reversal"] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+class Reversal:
+    seq: int
+    # The stronger end of the reversal (lower in the final ranking).
+    stronger: Group
+    # The weaker end of the reversal (higher in the final ranking).
+    weaker: Group
+    margin: str
+
+
 def tabulate_results(poll_id):
     with db_connection() as conn:
         cur = conn.cursor()
@@ -116,38 +143,43 @@ def tabulate_results(poll_id):
                 ranking_dict.items(), key=lambda pair: pair[1]
             )
         )
+    ordering, matrix = mam.MaximizeAffirmedMajorities(
+        ballots,
+        candidates=candidates,
+        tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
+        seed=salt,
+    )
+
+    if not is_open:
+        ordering = [{candidate} for candidate in ordering]
+
     return (
-        mam.MaximizeAffirmedMajorities(
-            ballots,
-            candidates=candidates,
-            tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
-            seed=salt,
-        ),
+        (ordering, matrix),
         is_open,
         len(rankings),
     )
 
 
 def render_matrix(matrix, ordering):
+    flat_ordering = []
+    for rank in ordering:
+        flat_ordering.extend(rank)
+
     def gen():
-        if isinstance(ordering[0], set):
-            labels = {str(list(group)): next(iter(group)) for group in ordering}
-        else:
-            labels = {str(cand): cand for cand in ordering}
+        labels = sorted(matrix.keys(), key=lambda cand: flat_ordering.index(cand))
         width = max(len(str(elt)) for row in matrix.values() for elt in row.values())
         width = max(width, max(len(cand) for cand in labels))
         yield " " * (width + 1)
-        print(matrix)
-        for col_key, col_exemplar in labels.items():
-            yield f"{col_key:{width}} "
+        for col_key in labels:
+            yield f"{col_key:>{width}} "
         yield "\n"
-        for row_key, row_exemplar in labels.items():
-            yield f"{row_key:{width}} "
-            for col_key, col_exemplar in labels.items():
+        for row_key in labels:
+            yield f"{row_key:>{width}} "
+            for col_key in labels:
                 if row_key == col_key:
                     cell = ""
                 else:
-                    cell = matrix[row_exemplar][col_exemplar]
+                    cell = matrix[row_key][col_key]
                 yield f"{cell!s:{width}} "
             yield "\n"
 
@@ -187,11 +219,33 @@ def old_results(poll_id):
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
 def results(poll_id):
     (ordering, matrix), is_open, num_ballots = tabulate_results(poll_id)
-    ordering = [str(elt) if isinstance(elt, set) else elt for elt in ordering]
+    groups = []
+    reversal_count = itertools.count()
+    for i, (group_a, group_b) in enumerate(itertools.pairwise(ordering)):
+        a = Exemplar(group_a)
+        b = Exemplar(group_b)
+        groups.append(
+            Group(i, group_a, f"{matrix[a][b]/num_ballots:.0%} ({matrix[a][b]})")
+        )
+    groups.append(Group(len(groups), group_b, ""))
+    for i, group_a in enumerate(groups):
+        for j, group_b in enumerate(groups[i:]):
+            a = Exemplar(group_a.members)
+            b = Exemplar(group_b.members)
+            margin = matrix[a][b] - matrix[b][a]
+            if margin < 0:
+                group_b.reversals.append(
+                    Reversal(
+                        next(reversal_count),
+                        group_b,
+                        group_a,
+                        f"{matrix[b][a]/num_ballots:.0%} ({matrix[b][a]})",
+                    )
+                )
+
     return flask.render_template(
         "ladder.html",
-        order=json.dumps(ordering),
-        matrix=json.dumps(matrix),
+        groups=groups,
         is_open=is_open,
         num_ballots=num_ballots,
     )

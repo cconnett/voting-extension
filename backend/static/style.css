@@ -1,5 +1,95 @@
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+.tied-group {
+    display:flex;
+    position: relative;
+    flex-direction: row;
+    border: 1px solid #333;
+    border-radius: 10px;
+    border-right: none;
+}
+.tie-banner {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    text-align: center;
+    text-transform: uppercase;
+}
+.tied-group .candidates {
+    display: flex;
+    flex-direction: column;
+    width:100%;
+}
+.defeat {
+    position: relative;
+    height: 3.5rem;
+}
+.defeat-line {
+    position:absolute;
+    background: #1cfd99;
+    width: 3px;
+    height: 100%;
+    left: 50%;
+}
+.margin {
+    background: #1a1a2e;
+    min-width: 2rem;
+    height: 2rem;
+    text-align: center;
+    vertical-align: baseline;
+    border-radius: 8px;
+    padding: .5rem;
+    padding-top: .2rem;
+    font-weight: bold;
+    pointer-events: all;
+}
+.defeat-margin {
+    border: 2px solid #1cfd99;
+    position: absolute;
+    left: calc(50% - 1rem);
+    top: calc(50% - 1rem);
+    z-index: 0;
+}
+.reversal {
+    position: absolute;
+    bottom: 2rem;
+    left: -4rem;
+    width:450px;
+    height:20em;
+    pointer-events: none;
+}
+.reversal-arc {
+    background-image:
+    repeating-conic-gradient(#fd411e77 0 2deg, transparent 2deg 4deg);
+    width:100%;
+    height: 100%;
+    clip-path: shape(from 60px 100%, arc to 60px 0 of 30em small cw, line to 62px 0, arc to 62px 100% of 30em small ccw);
+}
+
+.reversal-margin {
+    position: absolute;
+    top: 48%;
+    left: 18px;
+    border: 2px solid #fd411e77;
+    padding: auto;
+    text-align: center;
+    border-radius: 8px;
+}
+.reversal-arrow {
+    width: 1em;
+    height: 1.25em;
+    background-color: #fd411e77;
+    clip-path: shape(from 0 100%, line to 50% 0, line to 100% 100%, line to 50% 80%);
+    position: absolute;
+    top: -5px;
+    left: 52px;
+    rotate: 19deg;
+}
+.candidate.winner {
+    background: #01ed8f;
+}
+.candidate.winner::before {
+    content: "🏆";
+}
 body {
   font-family: system-ui, sans-serif;
   background: #1a1a2e;
@@ -63,6 +153,7 @@ h1 {
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, transform 0.1s;
   user-select: none;
+  min-width: 10em;
 }
 
 .candidate:hover {
