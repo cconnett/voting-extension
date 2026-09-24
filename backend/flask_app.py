@@ -221,9 +221,7 @@ def results(poll_id):
     for i, (group_a, group_b) in enumerate(itertools.pairwise(ordering)):
         a = Exemplar(group_a)
         b = Exemplar(group_b)
-        groups.append(
-            Group(i, group_a, f"{matrix[a][b]/num_ballots:.0%} ({matrix[a][b]})")
-        )
+        groups.append(Group(i, group_a, f"{matrix[a][b]}"))
     groups.append(Group(len(groups), group_b, ""))
     for i, group_a in enumerate(groups):
         for j, group_b in enumerate(groups[i:]):
@@ -236,7 +234,7 @@ def results(poll_id):
                         next(reversal_count),
                         group_b,
                         group_a,
-                        f"{matrix[b][a]/num_ballots:.0%} ({matrix[b][a]})",
+                        f"{matrix[b][a]}",
                     )
                 )
 
