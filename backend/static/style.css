@@ -1,7 +1,16 @@
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+:root {
+    --candidate-height: 56px;
+}
 
 .tied-group {
-    display:flex;
+    display: flex;
     position: relative;
     flex-direction: row;
     border: 1px solid #333;
@@ -17,14 +26,14 @@
 .tied-group .candidates {
     display: flex;
     flex-direction: column;
-    width:100%;
+    width: 100%;
 }
 .defeat {
     position: relative;
     height: 3.5rem;
 }
 .defeat-line {
-    position:absolute;
+    position: absolute;
     background: #1cfd99;
     width: 3px;
     height: 100%;
@@ -37,8 +46,8 @@
     text-align: center;
     vertical-align: baseline;
     border-radius: 8px;
-    padding: .5rem;
-    padding-top: .2rem;
+    padding: 0.5rem;
+    padding-top: 0.2rem;
     font-weight: bold;
     pointer-events: all;
 }
@@ -52,302 +61,332 @@
 .reversal {
     position: absolute;
     bottom: 2rem;
-    left: -4rem;
-    width:450px;
-    height:20em;
+    left: calc(-1 * var(--l));
+    --d: calc(7 * var(--candidate-height));
+    --d1: calc(8 * var(--candidate-height));
+    --l: 5rem;
+    --r: calc((var(--d1) * var(--d1) - 4 * var(--l) * var(--l))/4/var(--l));
+    width: calc(2 * var(--r));
+    height: calc(var(--d) + var(--candidate-height));
     pointer-events: none;
 }
 .reversal-arc {
-    background-image:
-    repeating-conic-gradient(#fd411e77 0 2deg, transparent 2deg 4deg);
-    width:100%;
+    background-image: repeating-conic-gradient(
+        #fd411e77 0 1deg,
+        transparent 1deg 2deg
+    );
+    width: 100%;
     height: 100%;
-    clip-path: shape(from 60px 100%, arc to 60px 0 of 30em small cw, line to 62px 0, arc to 62px 100% of 30em small ccw);
+    clip-path: shape(
+        from var(--l) 100%,
+        arc to var(--l) 0 of var(--r) small cw,
+        line to calc(var(--l) - 3px) 0,
+        arc to calc(var(--l) - 3px) 100% of var(--r) small ccw
+    );
 }
 
 .reversal-margin {
     position: absolute;
     top: 48%;
-    left: 18px;
+    left: 0.8rem;
     border: 2px solid #fd411e77;
     padding: auto;
     text-align: center;
     border-radius: 8px;
 }
 .reversal-arrow {
-    width: 1em;
-    height: 1.25em;
+    width: 1rem;
+    height: 1.25rem;
     background-color: #fd411e77;
-    clip-path: shape(from 0 100%, line to 50% 0, line to 100% 100%, line to 50% 80%);
+    clip-path: shape(
+        from 0 100%,
+        line to 50% 0,
+        line to 100% 100%,
+        line to 50% 80%
+    );
     position: absolute;
-    top: -5px;
-    left: 52px;
+    top: 0;
+    left: calc(var(--l) - 1rem);
     rotate: 19deg;
 }
 .candidate.winner {
     background: #01ed8f;
+    color: black;
+    padding-left: 8px;
 }
 .candidate.winner::before {
     content: "🏆";
+    padding-right: 8px;
 }
 body {
-  font-family: system-ui, sans-serif;
-  background: #1a1a2e;
-  color: #e0e0e0;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+    font-family: system-ui, sans-serif;
+    background: #1a1a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 h1 {
-  text-align: center;
-  margin-bottom: 32px;
-  font-size: 1.6rem;
-  color: #a78bfa;
-  letter-spacing: 0.05em;
+    text-align: center;
+    margin-bottom: 32px;
+    font-size: 1.6rem;
+    color: #a78bfa;
+    letter-spacing: 0.05em;
 }
 
 .app {
-  width: 640px;
+    width: 640px;
 }
 
 .columns {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
 }
 
 .panel {
-  background: #16213e;
-  border-radius: 12px;
-  padding: 20px;
-  min-height: 360px;
-  display: flex;
-  flex-direction: column;
+    background: #16213e;
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 360px;
+    display: flex;
+    flex-direction: column;
 }
 
 .panel-title {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #7c7c9b;
-  margin-bottom: 16px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7c7c9b;
+    margin-bottom: 16px;
 }
 
 .list {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .candidate {
-  background: #0f3460;
-  border: 1px solid #1a4a80;
-  border-radius: 8px;
-  padding: 14px 18px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.1s;
-  user-select: none;
-  min-width: 10em;
+    background: #0f3460;
+    border: 1px solid #1a4a80;
+    border-radius: 8px;
+    padding: 14px 18px;
+    height: var(--candidate-height);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    user-select: none;
+    min-width: 10em;
 }
 
 .candidate:hover {
-  background: #1a5a9a;
-  border-color: #a78bfa;
-  transform: translateX(3px);
+    background: #1a5a9a;
+    border-color: #a78bfa;
+    transform: translateX(3px);
 }
 
 .ballot-item {
-  background: #2d1b69;
-  border: 1px solid #4c2da0;
-  border-radius: 8px;
-  padding: 14px 18px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: grab;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  transition: background 0.15s, border-color 0.15s;
-  user-select: none;
+    background: #2d1b69;
+    border: 1px solid #4c2da0;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: background 0.15s, border-color 0.15s;
+    user-select: none;
 }
 
-.ballot-item:active { cursor: grabbing; }
+.ballot-item:active {
+    cursor: grabbing;
+}
 
 .ballot-item.dragging {
-  opacity: 0.4;
+    opacity: 0.4;
 }
 
 .ballot-item.drag-over {
-  border-color: #a78bfa;
-  background: #3d2580;
+    border-color: #a78bfa;
+    background: #3d2580;
 }
 
 .rank-num {
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #a78bfa;
-  min-width: 18px;
-  text-align: right;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #a78bfa;
+    min-width: 18px;
+    text-align: right;
 }
 
 .ballot-item .remove-btn {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: #555;
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0 2px;
-  transition: color 0.15s;
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #555;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 2px;
+    transition: color 0.15s;
 }
 
-.ballot-item .remove-btn:hover { color: #f87171; }
+.ballot-item .remove-btn:hover {
+    color: #f87171;
+}
 
 .empty-hint {
-  color: #3a3a5c;
-  font-size: 0.85rem;
-  text-align: center;
-  margin: auto;
-  padding: 24px 0;
+    color: #3a3a5c;
+    font-size: 0.85rem;
+    text-align: center;
+    margin: auto;
+    padding: 24px 0;
 }
 
 .drop-zone {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .drop-zone.active-drop {
-  outline: 2px dashed #4c2da0;
-  outline-offset: 4px;
-  border-radius: 6px;
+    outline: 2px dashed #4c2da0;
+    outline-offset: 4px;
+    border-radius: 6px;
 }
 
 /* --- submit button (shared) --- */
 
 .submit-btn {
-  background: #4c2da0;
-  border: 1px solid #a78bfa;
-  border-radius: 8px;
-  padding: 14px 28px;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #e0e0e0;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+    background: #4c2da0;
+    border: 1px solid #a78bfa;
+    border-radius: 8px;
+    padding: 14px 28px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, opacity 0.15s;
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #5c3db0;
-  border-color: #c4a8ff;
+    background: #5c3db0;
+    border-color: #c4a8ff;
 }
 
 .submit-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
+    opacity: 0.5;
+    cursor: default;
 }
 
 /* --- ballot page --- */
 
 .submit-area {
-  margin-top: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 16px;
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 16px;
 }
 
 .submit-status {
-  font-size: 0.9rem;
-  color: #7c7c9b;
+    font-size: 0.9rem;
+    color: #7c7c9b;
 }
 
-.submit-status.pending { color: #a78bfa; }
-.submit-status.success { color: #6ee7b7; }
-.submit-status.error   { color: #fca5a5; }
+.submit-status.pending {
+    color: #a78bfa;
+}
+.submit-status.success {
+    color: #6ee7b7;
+}
+.submit-status.error {
+    color: #fca5a5;
+}
 
 /* --- create page --- */
 
 .form-panel {
-  background: #16213e;
-  border-radius: 12px;
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+    background: #16213e;
+    border-radius: 12px;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .form-panel .submit-btn {
-  align-self: flex-end;
+    align-self: flex-end;
 }
 
 .field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .field label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #7c7c9b;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #7c7c9b;
 }
 
 .field input,
 .field textarea {
-  background: #0f3460;
-  border: 1px solid #1a4a80;
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 1rem;
-  font-family: inherit;
-  color: #e0e0e0;
-  transition: border-color 0.15s;
-  outline: none;
+    background: #0f3460;
+    border: 1px solid #1a4a80;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: #e0e0e0;
+    transition: border-color 0.15s;
+    outline: none;
 }
 
 .field input:focus,
 .field textarea:focus {
-  border-color: #a78bfa;
+    border-color: #a78bfa;
 }
 
 .field textarea {
-  resize: vertical;
-  min-height: 180px;
-  line-height: 1.5;
+    resize: vertical;
+    min-height: 180px;
+    line-height: 1.5;
 }
 
 .field .hint {
-  font-size: 0.78rem;
-  color: #4a4a6a;
+    font-size: 0.78rem;
+    color: #4a4a6a;
 }
 
 .status {
-  font-size: 0.9rem;
-  text-align: center;
-  padding: 10px;
-  border-radius: 8px;
-  display: none;
+    font-size: 0.9rem;
+    text-align: center;
+    padding: 10px;
+    border-radius: 8px;
+    display: none;
 }
 
 .status.success {
-  background: #1a3a2e;
-  color: #6ee7b7;
-  border: 1px solid #2a5a4a;
+    background: #1a3a2e;
+    color: #6ee7b7;
+    border: 1px solid #2a5a4a;
 }
 
 .status.error {
-  background: #3a1a1a;
-  color: #fca5a5;
-  border: 1px solid #5a2a2a;
+    background: #3a1a1a;
+    color: #fca5a5;
+    border: 1px solid #5a2a2a;
 }
