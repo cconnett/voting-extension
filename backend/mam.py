@@ -112,25 +112,28 @@ def MaximizeAffirmedMajorities(
     # Apply each pairwise defeat to the final order. Group by the metric value
     # so tied groups are processed together.
     for metric, group in itertools.groupby(pairwise_defeats, key=lambda e: e[1]):
-        group = list(group)
         if metric[0] <= 0:
             # The first metric of this group is negative. We've crossed the
             # midway point and would now be processing inverses of defeats
             # already added. We're done.
             break
         # Prune all defeats that do not apply alone.
-        group = [
-            ((a, b), unused_metric)
-            for ((a, b), unused_metric) in group
-            if not networkx.has_path(final_order, b, a)
-        ]
-        if len(group) > 1:
+        propose = []
+        reject = []
+        for (a, b), metric in group:
+            if networkx.has_path(final_order, b, a):
+                reject.append(((a, b), metric))
+            else:
+                propose.append(((a, b), metric))
+        for (a, b), metric in reject:
+            logging.debug(f"Rejected {a} > {b} : {metric}")
+        if len(propose) > 1:
             logging.debug("Probing application of tied group")
         # Apply each pairwise defeat in the group. If every edge in this group
         # applies cleanly, it is kept. Otherwise, the group is hopelessly tied
         # and must be ignored.
         probe = final_order.copy()
-        for (a, b), metric in group:
+        for (a, b), metric in propose:
             if not networkx.has_path(probe, b, a):
                 logging.debug(f"Applying {a} > {b} : {metric}")
                 probe.add_edge(a, b)
@@ -141,7 +144,7 @@ def MaximizeAffirmedMajorities(
                 probe = final_order
                 break
         else:
-            if len(group) > 1:
+            if len(propose) > 1:
                 logging.debug("Group applied cleanly. Committing.")
         final_order = probe
 
