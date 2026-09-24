@@ -112,44 +112,42 @@ def MaximizeAffirmedMajorities(
     # Apply each pairwise defeat to the final order. Group by the metric value
     # so tied groups are processed together.
     for metric, group in itertools.groupby(pairwise_defeats, key=lambda e: e[1]):
-        if metric[0] <= 0:
-            # The first metric of this group is negative. We've crossed the
-            # midway point and would now be processing inverses of defeats
-            # already added. We're done.
-            break
-        # Prune all defeats that do not apply alone.
         propose = []
-        reject = []
         for (a, b), metric in group:
-            if networkx.has_path(final_order, b, a):
-                reject.append(((a, b), metric))
+            if networkx.has_path(final_order, a, b):
+                # This edge is already implied by transitivity, so apply it
+                # immediately.
+                logging.debug(f"Applied {a} > {b} : {metric} by transitivity")
+                final_order.add_edge(a, b)
+            elif networkx.has_path(final_order, b, a):
+                # This edge creates a loop contrary to stronger defeats. Reject
+                # it immediately.
+                logging.debug(f"Rejected {a} > {b} : {metric}")
             else:
+                # Putative edges will be checked all at once in the next step.
                 propose.append(((a, b), metric))
-        for (a, b), metric in reject:
-            logging.debug(f"Rejected {a} > {b} : {metric}")
-        if len(propose) > 1:
-            logging.debug("Probing application of tied group")
-        # Apply each pairwise defeat in the group. If every edge in this group
-        # applies cleanly, it is kept. Otherwise, the group is hopelessly tied
-        # and must be ignored.
-        probe = final_order.copy()
-        for (a, b), metric in propose:
-            if not networkx.has_path(probe, b, a):
-                logging.debug(f"Applying {a} > {b} : {metric}")
-                probe.add_edge(a, b)
-            else:
-                logging.debug(f"> Cannot apply {a} > {b} : {metric}")
-                logging.debug("Rolling back.")
-                # Hopelessly tied. Roll back the order to before this loop.
-                probe = final_order
-                break
+        if len(propose) == 1:
+            (a, b), metric = propose[0]
+            final_order.add_edge(a, b)
+            logging.debug(f"Applied {a} > {b} : {metric}")
         else:
-            if len(propose) > 1:
-                logging.debug("Group applied cleanly. Committing.")
-        final_order = probe
+            logging.debug("Probing tied group")
+            # Apply the entire `propose` group. Any edge that has a path
+            # reversing it must be rejected. Keep the others.
+            keepable = []
+            probe = final_order.copy()
+            for (a, b), metric in propose:
+                probe.add_edge(a, b)
+            for (a, b), metric in propose:
+                if networkx.has_path(probe, b, a):
+                    logging.debug(f"Cannot apply {a} > {b} : {metric} (creates loop)")
+                else:
+                    keepable.append((a, b))
+                    logging.debug(f"Applied {a} > {b} : {metric} (keepable from tie)")
+            logging.debug("End of probe")
+            final_order.add_edges_from(keepable)
 
     if tiebreaker != Tiebreaker.NONE:
-
         logging.debug(f"Applying final tiebreaker. Ranks: {tiebreak_ranks}")
         # Finally, apply the tiebreak ordering to resolve any other unresolved loops.
         for a, b in itertools.product(candidates, candidates):
