@@ -150,9 +150,6 @@ def tabulate_results(poll_id):
         seed=salt,
     )
 
-    if not is_open:
-        ordering = [{candidate} for candidate in ordering]
-
     return (
         (ordering, matrix),
         is_open,
