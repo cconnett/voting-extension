@@ -143,7 +143,7 @@ def tabulate_results(poll_id):
                 ranking_dict.items(), key=lambda pair: pair[1]
             )
         )
-    ordering, matrix = mam.MaximizeAffirmedMajorities(
+    ordering, matrix, graph = mam.MaximizeAffirmedMajorities(
         ballots,
         candidates=candidates,
         tiebreaker=mam.Tiebreaker.NONE if is_open else mam.Tiebreaker.LINEAR,
@@ -151,7 +151,7 @@ def tabulate_results(poll_id):
     )
 
     return (
-        (ordering, matrix),
+        (ordering, matrix, graph),
         is_open,
         len(rankings),
     )
@@ -191,7 +191,7 @@ def Exemplar(obj_or_set):
 
 @app.route("/old_results/<uuid:poll_id>", methods=["GET"])
 def old_results(poll_id):
-    (ordering, matrix), is_open, num_ballots = tabulate_results(poll_id)
+    (ordering, matrix, graph), is_open, num_ballots = tabulate_results(poll_id)
     ret = f"Poll is {'open' if is_open else 'closed'}.<br>"
     ret += f"{ordering}<br>"
     ret += f"Ballots received: {num_ballots}<br>"

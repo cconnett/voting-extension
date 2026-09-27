@@ -53,7 +53,7 @@ def MaximizeAffirmedMajorities(
     seeded_random.shuffle(ballots)
 
     # Table of count of the pairwise preferences.
-    preferences = collections.defaultdict(collections.Counter)
+    matrix = collections.defaultdict(collections.Counter)
 
     # Make a tiebreak ordering that will ideally be a total linear ordering
     # after processing all ballots. If it is not, some candidates may be tied
@@ -73,7 +73,7 @@ def MaximizeAffirmedMajorities(
                     ):
                         tiebreak_graph.add_edge(a, b)
                     # 2. Add the strict preference in the preference table.
-                    preferences[a][b] += 1
+                    matrix[a][b] += 1
 
     if tiebreaker == Tiebreaker.LINEAR:
         # Apply a final random total ordering to the tiebreak ordering. This
@@ -90,18 +90,18 @@ def MaximizeAffirmedMajorities(
         tiebreak_ranks.update({candidate: index for candidate in generation})
 
     # We are now ready to construct the final order.
-    final_order = networkx.DiGraph()
-    final_order.add_nodes_from(candidates)
+    final_graph = networkx.DiGraph()
+    final_graph.add_nodes_from(candidates)
 
     pairwise_defeats = []
     for a, b in itertools.product(candidates, candidates):
-        if a != b and preferences[a][b] > preferences[b][a]:
+        if a != b and matrix[a][b] > matrix[b][a]:
             pairwise_defeats.append(
                 (
                     (a, b),
                     (
-                        preferences[a][b],
-                        -preferences[b][a],
+                        matrix[a][b],
+                        -matrix[b][a],
                         tiebreak_ranks[b],
                         -tiebreak_ranks[a],
                     ),
@@ -114,12 +114,12 @@ def MaximizeAffirmedMajorities(
     for metric, group in itertools.groupby(pairwise_defeats, key=lambda e: e[1]):
         propose = []
         for (a, b), metric in group:
-            if networkx.has_path(final_order, a, b):
+            if networkx.has_path(final_graph, a, b):
                 # This edge is already implied by transitivity, so apply it
                 # immediately.
                 logging.debug(f"Applied {a} > {b} : {metric} by transitivity")
-                final_order.add_edge(a, b)
-            elif networkx.has_path(final_order, b, a):
+                final_graph.add_edge(a, b, metric=metric)
+            elif networkx.has_path(final_graph, b, a):
                 # This edge creates a loop contrary to stronger defeats. Reject
                 # it immediately.
                 logging.debug(f"Rejected {a} > {b} : {metric}")
@@ -128,33 +128,34 @@ def MaximizeAffirmedMajorities(
                 propose.append(((a, b), metric))
         if len(propose) == 1:
             (a, b), metric = propose[0]
-            final_order.add_edge(a, b)
+            final_graph.add_edge(a, b, metric=metric)
             logging.debug(f"Applied {a} > {b} : {metric}")
-        else:
+        elif len(propose) > 1:
             logging.debug("Probing tied group")
             # Apply the entire `propose` group. Any edge that has a path
             # reversing it must be rejected. Keep the others.
             keepable = []
-            probe = final_order.copy()
+            probe = final_graph.copy()
             for (a, b), metric in propose:
                 probe.add_edge(a, b)
             for (a, b), metric in propose:
                 if networkx.has_path(probe, b, a):
                     logging.debug(f"Cannot apply {a} > {b} : {metric} (creates loop)")
                 else:
-                    keepable.append((a, b))
+                    keepable.append((a, b, metric))
                     logging.debug(f"Applied {a} > {b} : {metric} (keepable from tie)")
             logging.debug("End of probe")
-            final_order.add_edges_from(keepable)
+            for a, b, metric in keepable:
+                final_graph.add_edge(a, b, metric=metric)
 
     if tiebreaker != Tiebreaker.NONE:
         logging.debug(f"Applying final tiebreaker. Ranks: {tiebreak_ranks}")
         # Finally, apply the tiebreak ordering to resolve any other unresolved loops.
         for a, b in itertools.product(candidates, candidates):
             if tiebreak_ranks[a] < tiebreak_ranks[b] and not networkx.has_path(
-                final_order, b, a
+                final_graph, b, a
             ):
-                final_order.add_edge(a, b)
-    generations = list(networkx.topological_generations(final_order))
+                final_graph.add_edge(a, b, metric=(0, 0, 0, 0))
+    generations = list(networkx.topological_generations(final_graph))
     final_ordering = [set(generation) for generation in generations]
-    return (final_ordering, preferences)
+    return (final_ordering, matrix, final_graph)
