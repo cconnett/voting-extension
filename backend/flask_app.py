@@ -108,16 +108,15 @@ class Group:
     members: Candidate
     # Margin over the next group.
     margin: str
-    reversals: List["Reversal"] = dataclasses.field(default_factory=list)
+    jumps: List["Jump"] = dataclasses.field(default_factory=list)
 
 
 @dataclasses.dataclass
-class Reversal:
+class Jump:
     seq: int
-    # The stronger end of the reversal (lower in the final ranking).
-    stronger: Group
-    # The weaker end of the reversal (higher in the final ranking).
-    weaker: Group
+    css_class: str
+    # CSS calc expression for the draw height of the reversal.
+    distance: str
     margin: str
 
 
@@ -213,31 +212,109 @@ def old_results(poll_id):
     return ret
 
 
+# TIES AND REVERSALS MUST BE MUTUALLY EXCLUSIVE! (design-wise)
+
+
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
 def results(poll_id):
-    (ordering, matrix), is_open, num_ballots = tabulate_results(poll_id)
+    (ordering, matrix, graph), is_open, num_ballots = tabulate_results(poll_id)
     groups = []
-    reversal_count = itertools.count()
-    for i, (group_a, group_b) in enumerate(itertools.pairwise(ordering)):
-        a = Exemplar(group_a)
-        b = Exemplar(group_b)
-        groups.append(Group(i, group_a, f"{matrix[a][b]}"))
-    groups.append(Group(len(groups), group_b, ""))
-    for i, group_a in enumerate(groups):
-        for j, group_b in enumerate(groups[i:]):
-            a = Exemplar(group_a.members)
-            b = Exemplar(group_b.members)
-            margin = matrix[a][b] - matrix[b][a]
-            if margin < 0:
-                group_b.reversals.append(
-                    Reversal(
-                        next(reversal_count),
-                        group_b,
-                        group_a,
-                        f"{matrix[b][a]}",
+    jump_count = itertools.count()
+    for i, (set_a, set_b) in enumerate(itertools.pairwise(ordering)):
+        margins = [matrix[a][b] for a in set_a for b in set_b]
+        mean_margin = sum(margins) / (len(set_a) * len(set_b))
+        margin = f"{mean_margin/num_ballots:.0%}"
+        if len(set(margins)) > 1:
+            margin = "~" + margin
+        groups.append(Group(i, set_a, margin))
+    groups.append(Group(len(groups), set_b, ""))
+
+    if not is_open:
+        strict_ordering = [next(iter(rank)) for rank in ordering]
+        reversals = []
+        for i, a in enumerate(strict_ordering):
+            for j, b in enumerate(strict_ordering[i + 1 :]):
+                if matrix[b][a] > num_ballots / 2:
+                    reversal = Jump(
+                        next(jump_count),
+                        "reversal",
+                        str(2 * j + 2),
+                        f"{matrix[b][a]/num_ballots:.0%}",
                     )
+                    groups[i + j + 1].jumps.append(reversal)
+                    reversals.append((a, b, matrix[b][a]))
+        """A reversal goes backward up the ladder, which gives it a span.  We
+        need to select a subset of the forward jumps. This subset should be a
+        (ideally smallest) set where all ladder defeats in the span of a
+        reversal that are less or equal to the reversal are covered by a
+        stronger jump.
+
+        A weak defeat is one that is spanned by an equal or stronger reversal.
+
+        Cover all weak defeats: choose jump defeat(s) that pass over the weak
+        defeats and are stronger than the reversals that made the defeats weak
+        originally."""
+        weak_defeats = set(
+            (a, b, reversal[2])
+            for a, b in itertools.pairwise(strict_ordering)
+            for reversal in reversals
+            if strict_ordering.index(a) >= strict_ordering.index(reversal[0])
+            and strict_ordering.index(b) <= strict_ordering.index(reversal[1])
+            and reversal[2] >= matrix[a][b]
+        )
+        weak_defeats_strength = {}
+        for a, b, strength in weak_defeats:
+            weak_defeats_strength[(a, b)] = max(
+                strength, weak_defeats_strength.get((a, b), 0)
+            )
+        print("Weak defeats:", weak_defeats_strength)
+        covering_jumps = []
+        for jump_length in range(len(strict_ordering) - 1, 1, -1):
+            for i, a in enumerate(strict_ordering):
+                if i + jump_length >= len(strict_ordering):
+                    break
+                j = i + jump_length
+                b = strict_ordering[j]
+                covering_jumps.append(
+                    (
+                        a,
+                        b,
+                        matrix[a][b],
+                        [
+                            weak
+                            for weak in weak_defeats_strength
+                            if strict_ordering.index(a)
+                            <= strict_ordering.index(weak[0])
+                            and strict_ordering.index(b)
+                            >= strict_ordering.index(weak[1])
+                            and matrix[a][b] > weak_defeats_strength[weak]
+                        ],
+                    ),
                 )
 
+        covering_jumps.sort(key=lambda t: len(t[3]), reverse=True)
+        print("Covering jumps:", covering_jumps)
+        jumps_to_draw = []
+        for jump in covering_jumps:
+            if not weak_defeats:
+                break
+            covered_defeats = set(
+                weak
+                for weak in weak_defeats
+                if strict_ordering.index(jump[0]) <= strict_ordering.index(weak[0])
+                and strict_ordering.index(jump[1]) >= strict_ordering.index(weak[1])
+            )
+            if covered_defeats:
+                jumps_to_draw.append(jump)
+                weak_defeats -= covered_defeats
+        print("final jumps:", jumps_to_draw)
+        for a, b, margin, _ in jumps_to_draw:
+            distance = 2 * (strict_ordering.index(b) - strict_ordering.index(a))
+            groups[strict_ordering.index(a)].jumps.append(
+                Jump(
+                    next(jump_count), "covering", distance, f"{margin/num_ballots:.0%}"
+                )
+            )
     return flask.render_template(
         "ladder.html",
         groups=groups,

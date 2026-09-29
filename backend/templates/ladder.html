@@ -18,18 +18,18 @@
             <div class="candidate {% if not is_open and group.seq == 0 %} winner {% endif %}">{{candidate}}</div>
             {% endfor %}
             </div>
-            {% for reversal in group.reversals %}
-            <div class="reversal" id="reversal-{{reversal.seq}}">
-                <div class="reversal-arc"></div>
-                <div class="reversal-margin margin">{{reversal.margin}}</div>
-                <div class="reversal-arrow"></div>
+            {% for jump in group.jumps %}
+            <div class="jump {{jump.css_class}}" id="jump-{{jump.seq}}" style="--d:{{jump.distance}}; --lane: {{jump.distance}}rem">
+                <div class="arc"></div>
+                <div class="margin">{{jump.margin}}</div>
+                <div class="arrowhead"></div>
             </div>
             {% endfor %}
         </div>
         {% if not loop.last %}
         <div class="defeat">
             <div class="defeat-line"></div>
-            <div class="defeat-margin margin">{{group.margin}}</div>
+            <div class="margin">{{group.margin}}</div>
         </div>
         {% endif %}
         {% endfor %}

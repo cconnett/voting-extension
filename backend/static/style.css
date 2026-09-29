@@ -28,17 +28,28 @@
     flex-direction: column;
     width: 100%;
 }
+
 .defeat {
     position: relative;
-    height: 3.5rem;
+    height: var(--candidate-height);
 }
+
 .defeat-line {
     position: absolute;
     background: #1cfd99;
-    width: 3px;
+    width: 100%;
     height: 100%;
-    left: 50%;
+    clip-path: shape(
+        from calc(50% + 1.5px) 0,
+        vline to 80%,
+        hline by 5px,
+        line to 50% 100%,
+        line to calc(50% - 6.5px) 80%,
+        hline by 5px,
+        vline to 0%
+    );
 }
+
 .margin {
     background: #1a1a2e;
     min-width: 2rem;
@@ -50,65 +61,112 @@
     padding-top: 0.2rem;
     font-weight: bold;
     pointer-events: all;
-}
-.defeat-margin {
-    border: 2px solid #1cfd99;
     position: absolute;
-    left: calc(50% - 1rem);
-    top: calc(50% - 1rem);
     z-index: 0;
 }
-.reversal {
-    position: absolute;
-    bottom: 2rem;
-    left: calc(-1 * var(--l));
-    --d: calc(7 * var(--candidate-height));
-    --d1: calc(8 * var(--candidate-height));
-    --l: 5rem;
-    --r: calc((var(--d1) * var(--d1) - 4 * var(--l) * var(--l))/4/var(--l));
-    width: calc(2 * var(--r));
-    height: calc(var(--d) + var(--candidate-height));
-    pointer-events: none;
+
+.defeat .margin {
+    border: 2px solid #1cfd99;
+    left: 0;
+    right: 0;
+    top: 10%;
+    width: fit-content;
+    margin-inline: auto;
 }
-.reversal-arc {
-    background-image: repeating-conic-gradient(
-        #fd411e77 0 1deg,
-        transparent 1deg 2deg
-    );
+
+.defeat-arrow {
+    background: #1cfd99;
+    position: absolute;
+    bottom: -3px;
+    left: -6.5px;
+}
+
+.arc {
+    --theta: calc(12px / var(--r) * 1rad);
     width: 100%;
     height: 100%;
     clip-path: shape(
-        from var(--l) 100%,
-        arc to var(--l) 0 of var(--r) small cw,
-        line to calc(var(--l) - 3px) 0,
-        arc to calc(var(--l) - 3px) 100% of var(--r) small ccw
+        from var(--lane) 100%,
+        arc to var(--lane) 0 of var(--r) small cw,
+        line to calc(var(--lane) - 3px) 0,
+        arc to calc(var(--lane) - 3px) 100% of var(--r) small ccw
     );
 }
 
-.reversal-margin {
+.covering .arc {
+    background-color: #1cfd99;
+    transform: scaleX(-1);
+}
+.covering .margin {
+}
+
+.jump.reversal {
+    left: calc(-1 * var(--lane));
+    bottom: 50%;
+}
+.jump.covering {
+    right: calc(-1 * var(--lane));
+    top: 50%;
+}
+.jump {
     position: absolute;
-    top: 48%;
-    left: 0.8rem;
-    border: 2px solid #fd411e77;
-    padding: auto;
+    /* border: 1px solid red; */
+    --d1: calc((var(--d) + 1) * var(--candidate-height));
+    --r: calc(
+         (var(--d1) * var(--d1) - 4 * var(--lane) * var(--lane))/4/var(--lane)
+    );
+    width: calc(2 * var(--r));
+    height: calc(var(--d) * var(--candidate-height));
+    pointer-events: none;
+    z-index: -1;
+}
+.jump .margin {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     text-align: center;
     border-radius: 8px;
 }
-.reversal-arrow {
+.reversal .arc {
+    background-image: repeating-conic-gradient(
+        #b02d14 0 var(--theta),
+        transparent var(--theta) calc(2 * var(--theta))
+    );
+}
+.reversal .margin {
+    left: 1rem;
+    border: 2px solid #b02d14;
+}
+.covering .margin {
+    right: 1rem;
+    border: 2px solid #1cfd99;
+}
+.arrowhead {
     width: 1rem;
-    height: 1.25rem;
-    background-color: #fd411e77;
+    height: 1rem;
     clip-path: shape(
         from 0 100%,
         line to 50% 0,
         line to 100% 100%,
         line to 50% 80%
     );
-    position: absolute;
-    top: 0;
-    left: calc(var(--l) - 1rem);
-    rotate: 19deg;
 }
+.jump .arrowhead {
+    position: absolute;
+}
+.reversal .arrowhead {
+    background-color: #b02d14;
+    top: -2px;
+    left: calc(var(--lane) - 12px);
+    transform: rotate(calc(acos((var(--r) - var(--lane))/var(--r))));
+}
+.covering .arrowhead {
+    background-color: #1cfd99;
+    bottom: -2px;
+    right: calc(var(--lane) - 12px);
+    transform: rotate(calc(180deg + acos((var(--r) - var(--lane))/var(--r))));
+}
+
 .candidate.winner {
     background: #01ed8f;
     color: black;
@@ -176,7 +234,7 @@ h1 {
     border: 1px solid #1a4a80;
     border-radius: 8px;
     padding: 14px 18px;
-    height: var(--candidate-height);
+    height: calc(var(--candidate-height) - 2px);
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
