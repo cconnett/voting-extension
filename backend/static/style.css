@@ -67,11 +67,9 @@
 
 .defeat .margin {
     border: 2px solid #1cfd99;
-    left: 0;
-    right: 0;
     top: 10%;
-    width: fit-content;
-    margin-inline: auto;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .defeat-arrow {
@@ -82,22 +80,22 @@
 }
 
 .arc {
-    --theta: calc(12px / var(--r) * 1rad);
     width: 100%;
     height: 100%;
     clip-path: shape(
-        from var(--lane) 100%,
-        arc to var(--lane) 0 of var(--r) small cw,
-        line to calc(var(--lane) - 3px) 0,
-        arc to calc(var(--lane) - 3px) 100% of var(--r) small ccw
+        from calc(var(--lane) + 3px) 100%,
+        arc to calc(var(--lane) + 3px) 0 of var(--r) small cw,
+        line to var(--lane) 0,
+        arc to var(--lane) 100% of var(--r) small ccw
     );
 }
 
 .covering .arc {
-    background-color: #1cfd99;
     transform: scaleX(-1);
-}
-.covering .margin {
+    background-image: conic-gradient(
+        transparent 0 calc(270deg - var(--alpha) + 2deg),
+        #1cfd99 calc(270deg - var(--alpha) + 2deg) 100%
+    );
 }
 
 .jump.reversal {
@@ -113,10 +111,11 @@
     /* border: 1px solid red; */
     --d1: calc((var(--d) + 1) * var(--candidate-height));
     --r: calc(
-         (var(--d1) * var(--d1) - 4 * var(--lane) * var(--lane))/4/var(--lane)
+         (var(--d1) * var(--d1) + 4 * var(--lane) * var(--lane))/(8*var(--lane))
     );
-    width: calc(2 * var(--r));
-    height: calc(var(--d) * var(--candidate-height));
+    --alpha: calc(acos((var(--r) - var(--lane))/var(--r)));
+    width: calc(2 * var(--r) + 4px);
+    height: calc((var(--d) + 1) * var(--candidate-height));
     pointer-events: none;
     z-index: -1;
 }
@@ -124,47 +123,48 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    text-align: center;
-    border-radius: 8px;
 }
 .reversal .arc {
+    --theta: calc(12px / var(--r) * 1rad);
     background-image: repeating-conic-gradient(
         #b02d14 0 var(--theta),
         transparent var(--theta) calc(2 * var(--theta))
     );
 }
 .reversal .margin {
-    left: 1rem;
+    left: 0;
+    transform: translateX(-50%);
     border: 2px solid #b02d14;
 }
 .covering .margin {
-    right: 1rem;
+    right: 0;
+    transform: translateX(50%);
     border: 2px solid #1cfd99;
 }
 .arrowhead {
     width: 1rem;
-    height: 1rem;
+    height: 2rem;
+    position: absolute;
     clip-path: shape(
         from 0 100%,
-        line to 50% 0,
+        line to 50% 50%,
         line to 100% 100%,
-        line to 50% 80%
+        line to 50% 90%
     );
-}
-.jump .arrowhead {
-    position: absolute;
 }
 .reversal .arrowhead {
     background-color: #b02d14;
-    top: -2px;
-    left: calc(var(--lane) - 12px);
-    transform: rotate(calc(acos((var(--r) - var(--lane))/var(--r))));
+    top: 0;
+    left: calc(var(--lane) - 1px);
+    transform: translateX(-50%) translateY(-50%) translateY(2px)
+        rotate(calc(var(--alpha) - 5deg));
 }
 .covering .arrowhead {
     background-color: #1cfd99;
-    bottom: -2px;
-    right: calc(var(--lane) - 12px);
-    transform: rotate(calc(180deg + acos((var(--r) - var(--lane))/var(--r))));
+    bottom: 0;
+    right: calc(var(--lane) - 1px);
+    transform: translateX(50%) translateY(50%) translateY(-2px)
+        rotate(calc(180deg - 5deg + var(--alpha)));
 }
 
 .candidate.winner {

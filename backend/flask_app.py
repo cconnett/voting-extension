@@ -239,7 +239,7 @@ def results(poll_id):
                     reversal = Jump(
                         next(jump_count),
                         "reversal",
-                        str(2 * j + 2),
+                        str(2 * j + 1),
                         f"{matrix[b][a]/num_ballots:.0%}",
                     )
                     groups[i + j + 1].jumps.append(reversal)
@@ -310,7 +310,7 @@ def results(poll_id):
                 weak_defeats -= covered_defeats
         logging.debug("final jumps:", jumps_to_draw)
         for a, b, margin, _ in jumps_to_draw:
-            distance = 2 * (strict_ordering.index(b) - strict_ordering.index(a))
+            distance = 2 * (strict_ordering.index(b) - strict_ordering.index(a)) - 1
             groups[strict_ordering.index(a)].jumps.append(
                 Jump(
                     next(jump_count), "covering", distance, f"{margin/num_ballots:.0%}"

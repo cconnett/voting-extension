@@ -19,7 +19,7 @@
             {% endfor %}
             </div>
             {% for jump in group.jumps %}
-            <div class="jump {{jump.css_class}}" id="jump-{{jump.seq}}" style="--d:{{jump.distance}}; --lane: {{jump.distance}}rem">
+            <div class="jump {{jump.css_class}}" id="jump-{{jump.seq}}" style="--d:{{jump.distance}}; --lane:{{jump.distance}}rem">
                 <div class="arc"></div>
                 <div class="margin">{{jump.margin}}</div>
                 <div class="arrowhead"></div>
