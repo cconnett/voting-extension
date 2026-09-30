@@ -2,6 +2,7 @@ import contextlib
 import dataclasses
 import itertools
 import json
+import logging
 import os.path
 import random
 import secrets
@@ -267,7 +268,7 @@ def results(poll_id):
             weak_defeats_strength[(a, b)] = max(
                 strength, weak_defeats_strength.get((a, b), 0)
             )
-        print("Weak defeats:", weak_defeats_strength)
+        logging.debug("Weak defeats:", weak_defeats_strength)
         covering_jumps = []
         for jump_length in range(len(strict_ordering) - 1, 1, -1):
             for i, a in enumerate(strict_ordering):
@@ -293,7 +294,7 @@ def results(poll_id):
                 )
 
         covering_jumps.sort(key=lambda t: len(t[3]), reverse=True)
-        print("Covering jumps:", covering_jumps)
+        logging.debug("Covering jumps:", covering_jumps)
         jumps_to_draw = []
         for jump in covering_jumps:
             if not weak_defeats:
@@ -307,7 +308,7 @@ def results(poll_id):
             if covered_defeats:
                 jumps_to_draw.append(jump)
                 weak_defeats -= covered_defeats
-        print("final jumps:", jumps_to_draw)
+        logging.debug("final jumps:", jumps_to_draw)
         for a, b, margin, _ in jumps_to_draw:
             distance = 2 * (strict_ordering.index(b) - strict_ordering.index(a))
             groups[strict_ordering.index(a)].jumps.append(
