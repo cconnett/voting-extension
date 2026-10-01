@@ -122,7 +122,6 @@
 .jump .margin {
     position: absolute;
     top: 50%;
-    transform: translateY(-50%);
 }
 .reversal .arc {
     --theta: calc(12px / var(--r) * 1rad);
@@ -133,12 +132,12 @@
 }
 .reversal .margin {
     left: 0;
-    transform: translateX(-50%);
+    transform: translateY(-50%) translateX(-50%);
     border: 2px solid #b02d14;
 }
 .covering .margin {
     right: 0;
-    transform: translateX(50%);
+    transform: translateY(-50%) translateX(50%);
     border: 2px solid #1cfd99;
 }
 .arrowhead {
