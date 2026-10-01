@@ -116,8 +116,7 @@ class Group:
 class Jump:
     seq: int
     css_class: str
-    # CSS calc expression for the draw height of the reversal.
-    distance: str
+    distance: int
     margin: str
 
 
