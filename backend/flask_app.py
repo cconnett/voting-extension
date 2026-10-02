@@ -13,6 +13,7 @@ from typing import List
 import flask
 import jwt
 
+import ballot_utils
 import mam
 
 
@@ -133,15 +134,7 @@ def tabulate_results(poll_id):
         )
         rankings = cur.fetchall()
     candidates = json.loads(candidate_string)
-    ballots = []
-    for row in rankings:
-        ranking_dict = json.loads(row[0])
-        ballots.append(
-            (candidate,)
-            for candidate, unused_rank in sorted(
-                ranking_dict.items(), key=lambda pair: pair[1]
-            )
-        )
+    ballots = [ballot_utils.ordering_to_ballot(json.loads(row[0])) for row in rankings]
     ordering, matrix, graph = mam.MaximizeAffirmedMajorities(
         ballots,
         candidates=candidates,
@@ -212,9 +205,6 @@ def old_results(poll_id):
     return ret
 
 
-# TIES AND REVERSALS MUST BE MUTUALLY EXCLUSIVE! (design-wise)
-
-
 @app.route("/results/<uuid:poll_id>", methods=["GET"])
 def results(poll_id):
     (ordering, matrix, graph), is_open, num_ballots = tabulate_results(poll_id)
@@ -238,7 +228,7 @@ def results(poll_id):
                     reversal = Jump(
                         next(jump_count),
                         "reversal",
-                        str(2 * j + 1),
+                        2 * j + 1,
                         f"{matrix[b][a]/num_ballots:.0%}",
                     )
                     groups[i + j + 1].jumps.append(reversal)
