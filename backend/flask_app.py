@@ -257,7 +257,7 @@ def results(poll_id):
             weak_defeats_strength[(a, b)] = max(
                 strength, weak_defeats_strength.get((a, b), 0)
             )
-        logging.debug("Weak defeats:", weak_defeats_strength)
+        logging.debug("Weak defeats: %s", weak_defeats_strength)
         covering_jumps = []
         for jump_length in range(len(strict_ordering) - 1, 1, -1):
             for i, a in enumerate(strict_ordering):
@@ -283,7 +283,7 @@ def results(poll_id):
                 )
 
         covering_jumps.sort(key=lambda t: len(t[3]), reverse=True)
-        logging.debug("Covering jumps:", covering_jumps)
+        logging.debug("Covering jumps: %s", covering_jumps)
         jumps_to_draw = []
         for jump in covering_jumps:
             if not weak_defeats:
@@ -297,7 +297,7 @@ def results(poll_id):
             if covered_defeats:
                 jumps_to_draw.append(jump)
                 weak_defeats -= covered_defeats
-        logging.debug("final jumps:", jumps_to_draw)
+        logging.debug("final jumps: %s", jumps_to_draw)
         for a, b, margin, _ in jumps_to_draw:
             distance = 2 * (strict_ordering.index(b) - strict_ordering.index(a)) - 1
             groups[strict_ordering.index(a)].jumps.append(
@@ -325,12 +325,14 @@ def ballot(poll_id, user_id):
     # token = flask.request.form["token"]  # FIXME
     with db_connection() as conn:
         cur = conn.execute(
-            "SELECT title, candidates FROM polls WHERE id=?", (str(poll_id),)
+            "SELECT title, candidates, open FROM polls WHERE id=?", (str(poll_id),)
         )
         row = cur.fetchone()
         if not row:
-            abort(404)
-        title, candidates_string = row
+            flask.abort(404)
+        title, candidates_string, is_open = row
+        if not is_open:
+            flask.abort(409)
         cur = conn.execute(
             "SELECT ranking FROM ballots WHERE poll_id=? AND opaque_user_id=?",
             (
@@ -365,7 +367,7 @@ def cast_vote(poll_id):
         cur = conn.execute("SELECT open FROM polls WHERE id=?", (str(poll_id),))
         is_open = cur.fetchone()[0]
         if not is_open:
-            abort(409)
+            flask.abort(409)
         conn.execute(
             "INSERT OR REPLACE INTO ballots (poll_id, opaque_user_id, ranking) "
             "VALUES (?, ?, ?)",
