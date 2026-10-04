@@ -12,6 +12,7 @@ from typing import List
 
 import flask
 import jwt
+import networkx
 
 import ballot_utils
 import mam
@@ -225,84 +226,51 @@ def results(poll_id):
         for i, a in enumerate(strict_ordering):
             for j, b in enumerate(strict_ordering[i + 1 :]):
                 if matrix[b][a] > num_ballots / 2:
-                    reversal = Jump(
+                    jump = Jump(
                         next(jump_count),
                         "reversal",
                         2 * j + 1,
                         f"{matrix[b][a]/num_ballots:.0%}",
                     )
-                    groups[i + j + 1].jumps.append(reversal)
-                    reversals.append((a, b, matrix[b][a]))
-        """A reversal goes backward up the ladder, which gives it a span.  We
-        need to select a subset of the forward jumps. This subset should be a
-        (ideally smallest) set where all ladder defeats in the span of a
-        reversal that are less or equal to the reversal are covered by a
-        stronger jump.
+                    groups[i + j + 1].jumps.append(jump)
+                    reversals.append((a, b, matrix[b][a], jump))
 
-        A weak defeat is one that is spanned by an equal or stronger reversal.
-
-        Cover all weak defeats: choose jump defeat(s) that pass over the weak
-        defeats and are stronger than the reversals that made the defeats weak
-        originally."""
-        weak_defeats = set(
-            (a, b, reversal[2])
-            for a, b in itertools.pairwise(strict_ordering)
-            for reversal in reversals
-            if strict_ordering.index(a) >= strict_ordering.index(reversal[0])
-            and strict_ordering.index(b) <= strict_ordering.index(reversal[1])
-            and reversal[2] >= matrix[a][b]
-        )
-        weak_defeats_strength = {}
-        for a, b, strength in weak_defeats:
-            weak_defeats_strength[(a, b)] = max(
-                strength, weak_defeats_strength.get((a, b), 0)
-            )
-        logging.debug("Weak defeats: %s", weak_defeats_strength)
-        covering_jumps = []
-        for jump_length in range(len(strict_ordering) - 1, 1, -1):
-            for i, a in enumerate(strict_ordering):
-                if i + jump_length >= len(strict_ordering):
+        jumps_to_draw = set()
+        probe = networkx.DiGraph()
+        probe.add_nodes_from(strict_ordering)
+        edges = [
+            (edge, metric_dict["metric"]) for (edge, metric_dict) in graph.edges.items()
+        ]
+        edges.sort(key=lambda tup: tup[1])
+        for a, b, _, jump in reversals:
+            reversal_metric = (matrix[b][a], -matrix[a][b], 999, -999)
+            while edges:
+                edge, metric = edges.pop()
+                if metric <= reversal_metric:
+                    edges.append((edge, metric))
                     break
-                j = i + jump_length
-                b = strict_ordering[j]
-                covering_jumps.append(
-                    (
-                        a,
-                        b,
-                        matrix[a][b],
-                        [
-                            weak
-                            for weak in weak_defeats_strength
-                            if strict_ordering.index(a)
-                            <= strict_ordering.index(weak[0])
-                            and strict_ordering.index(b)
-                            >= strict_ordering.index(weak[1])
-                            and matrix[a][b] > weak_defeats_strength[weak]
-                        ],
-                    ),
+                is_mainline = (
+                    strict_ordering.index(edge[1]) - strict_ordering.index(edge[0]) == 1
                 )
-
-        covering_jumps.sort(key=lambda t: len(t[3]), reverse=True)
-        logging.debug("Covering jumps: %s", covering_jumps)
-        jumps_to_draw = []
-        for jump in covering_jumps:
-            if not weak_defeats:
-                break
-            covered_defeats = set(
-                weak
-                for weak in weak_defeats
-                if strict_ordering.index(jump[0]) <= strict_ordering.index(weak[0])
-                and strict_ordering.index(jump[1]) >= strict_ordering.index(weak[1])
-            )
-            if covered_defeats:
-                jumps_to_draw.append(jump)
-                weak_defeats -= covered_defeats
-        logging.debug("final jumps: %s", jumps_to_draw)
-        for a, b, margin, _ in jumps_to_draw:
+                probe.add_edge(*edge, weight=not is_mainline)
+            try:
+                jumps_to_draw |= set(
+                    itertools.pairwise(
+                        networkx.shortest_path(probe, a, b, weight="weight")
+                    )
+                )
+            except networkx.exception.NetworkXNoPath:
+                jump.css_class += " tiebreak"
+        for a, b in itertools.pairwise(strict_ordering):
+            jumps_to_draw.discard((a, b))
+        for a, b in jumps_to_draw:
             distance = 2 * (strict_ordering.index(b) - strict_ordering.index(a)) - 1
             groups[strict_ordering.index(a)].jumps.append(
                 Jump(
-                    next(jump_count), "covering", distance, f"{margin/num_ballots:.0%}"
+                    next(jump_count),
+                    "covering",
+                    distance,
+                    f"{matrix[a][b]/num_ballots:.0%}",
                 )
             )
     return flask.render_template(

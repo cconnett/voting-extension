@@ -152,9 +152,12 @@ def MaximizeAffirmedMajorities(
         logging.debug(f"Applying final tiebreaker. Ranks: {tiebreak_ranks}")
         # Finally, apply the tiebreak ordering to resolve any other unresolved loops.
         for a, b in itertools.product(candidates, candidates):
-            if tiebreak_ranks[a] < tiebreak_ranks[b] and not networkx.has_path(
-                final_graph, b, a
+            if (
+                not final_graph.has_edge(a, b)
+                and tiebreak_ranks[a] < tiebreak_ranks[b]
+                and not networkx.has_path(final_graph, b, a)
             ):
+
                 final_graph.add_edge(a, b, metric=(0, 0, 0, 0))
     generations = list(networkx.topological_generations(final_graph))
     final_ordering = [set(generation) for generation in generations]
