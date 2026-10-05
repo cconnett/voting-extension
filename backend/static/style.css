@@ -123,17 +123,24 @@
     position: absolute;
     top: 50%;
 }
+.reversal {
+    --color: firebrick;
+}
+.reversal.tiebreak {
+    /* --color: darkorange; */
+}
+
 .reversal .arc {
     --theta: calc(12px / var(--r) * 1rad);
     background-image: repeating-conic-gradient(
-        #b02d14 0 var(--theta),
+        var(--color) 0 var(--theta),
         transparent var(--theta) calc(2 * var(--theta))
     );
 }
 .reversal .margin {
     left: 0;
     transform: translateY(-50%) translateX(-50%);
-    border: 2px solid #b02d14;
+    border: 2px solid var(--color);
 }
 .covering .margin {
     right: 0;
@@ -152,7 +159,7 @@
     );
 }
 .reversal .arrowhead {
-    background-color: #b02d14;
+    background-color: var(--color);
     top: 0;
     left: calc(var(--lane) - 1px);
     transform: translateX(-50%) translateY(-50%) translateY(2px)
