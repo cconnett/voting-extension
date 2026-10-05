@@ -11,7 +11,7 @@ import more_itertools
 
 
 def generate_ballots(
-    candidates, /, lambda_shuffle=1 / 5, lambda_swap=1 / 3, lambda_merge=1 / 2
+    candidates, /, lambda_shuffle=1 / 5, lambda_swap=1 / 3, lambda_merge=0.9
 ):
     candidates = list(candidates)
     random.shuffle(candidates)
@@ -69,8 +69,8 @@ if __name__ == "__main__":
         ) as conn:
             conn.execute("PRAGMA foreign_keys=ON")
             conn.execute(
-                "insert into polls (id, salt, channel_id, title, candidates) "
-                'values (?, ?, "foo", "bar", ?)',
+                "insert into polls (id, salt, channel_id, title, candidates, open) "
+                'values (?, ?, "foo", "bar", ?, FALSE)',
                 (str(new_id), salt, json.dumps(candidates)),
             )
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
                     "values (?, ?, ?)",
                     (str(new_id), str(user_id), json.dumps(order)),
                 )
-        print(f"http://localhost:5000/old_results/{str(new_id)}")
+        print(f"http://localhost:5000/results/{str(new_id)}")
     except Exception as e:
         import pdb
 
